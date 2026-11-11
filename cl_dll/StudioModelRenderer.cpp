@@ -21,6 +21,7 @@
 
 #include "StudioModelRenderer.h"
 #include "GameStudioModelRenderer.h"
+#include "client_sound.h"
 #include "portal_manager.h"
 
 extern "C" int CL_IsThirdPerson(void);
@@ -173,8 +174,16 @@ void CStudioModelRenderer::StudioCalcBoneAdj( float dadt, float *adj, const byte
 		}
 		else
 		{
-			value = mouthopen / 64.0;
-			if (value > 1.0) value = 1.0;				
+			if ( !m_pCurrentEntity->player && m_pCurrentEntity->curstate.movetype == MOVETYPE_STEP )
+				value = CClient_SoundEngine::GetSoundEngine()->CalculateMouthOpen( m_pCurrentEntity->index );
+			else
+				value = mouthopen / 64.0;
+
+			value = fminf( 1.0f, value );
+
+			if ( value < 0 )
+				value = 0;
+
 			value = (1.0 - value) * pbonecontroller[j].start + value * pbonecontroller[j].end;
 			// Con_DPrintf("%d %f\n", mouthopen, value );
 		}

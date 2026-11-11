@@ -28,7 +28,7 @@ Select `Win32` and `Debug` or `Release`, then build the solution.
 
 ## People involved in development of the project
 - [ScriptedSnark](https://github.com/ScriptedSnark)
-- [\*(int\*)0 = 0xDEADBEEF](https://github.com/KV-Stepchenko)
+- [\*(int\*)0 = 0xDEADBEEF](https://github.com/kvstepchenko)
 
 ## Special thanks
 - [Sw1ft](https://github.com/sw1ft747) - for help in some questions and reversing as well

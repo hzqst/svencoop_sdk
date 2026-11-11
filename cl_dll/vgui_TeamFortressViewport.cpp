@@ -1683,10 +1683,8 @@ int TeamFortressViewport::MsgFunc_MOTD( const char *pszName, int iSize, void *pb
 
 	m_iGotAllMOTD = READ_BYTE() != 0;
 
-	char text[48];
+	const char *text = READ_STRING();
 
-	strncpy(text, READ_STRING(), sizeof(text) - 1);
-	text[sizeof(text) - 1] = 0;
 	strncat(m_szMOTD, text, sizeof(m_szMOTD) - strlen(m_szMOTD) - 1);
 	m_szMOTD[ sizeof(m_szMOTD)-1 ] = 0;
 

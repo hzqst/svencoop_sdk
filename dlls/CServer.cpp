@@ -200,7 +200,7 @@ void CServerState::SendExtras( unsigned int source, unsigned int recipient )
 	const ServerPlayerData &sender = players[source];
 	const ServerPlayerData &receiver = players[recipient];
 
-	if ( !target || !receiver.keyReady || !sender.used || sender.info.iLevel < EXTRAS_BARRED
+	if ( !target || !receiver.keyReady || !sender.used || sender.info.iLevel < EXTRAS_BANNED
 	     || !sender.info.szAuthId[0] || ( target->pev->flags & FL_FAKECLIENT ) )
 		return;
 
@@ -223,7 +223,7 @@ void CServerState::SendExtras( unsigned int source, unsigned int recipient )
 
 void CServerState::ApplyExtras( unsigned int slot, const extrasinfo_s &info )
 {
-	if ( !info.szAuthId[0] || info.iLevel < EXTRAS_BARRED || info.iLevel > EXTRAS_DEVELOPER || !Player( slot ) )
+	if ( !info.szAuthId[0] || info.iLevel < EXTRAS_BANNED || info.iLevel > EXTRAS_DEVELOPER || !Player( slot ) )
 		return;
 
 	ServerPlayerData &state = players[slot];
@@ -233,7 +233,7 @@ void CServerState::ApplyExtras( unsigned int slot, const extrasinfo_s &info )
 	state.nextRefresh = gpGlobals->time + RANDOM_FLOAT( EXTRAS_REFRESH_MIN_TIME, EXTRAS_REFRESH_MAX_TIME );
 	state.dirty = state.dirty || changed;
 
-	if ( info.iLevel == EXTRAS_BARRED && changed )
+	if ( info.iLevel == EXTRAS_BANNED && changed )
 		CServer::GetInstance()->BanPlayer( Player( slot ), state.authId, RANDOM_FLOAT( EXTRAS_REFRESH_MIN_TIME, EXTRAS_REFRESH_MAX_TIME ) * EXTRAS_BAN_TIME_SCALE );
 }
 
@@ -274,7 +274,7 @@ void CServerState::FinishQueries()
 
 			if ( currentAuthId && !strcmp( currentAuthId, result.szAuthId ) )
 			{
-				if ( result.iLevel >= EXTRAS_BARRED )
+				if ( result.iLevel >= EXTRAS_BANNED )
 					ApplyExtras( query->slot, result );
 				else if ( query->database.GetError()[0] )
 					ALERT( at_error, "CPlayerDatabase: %s\n", query->database.GetError() );

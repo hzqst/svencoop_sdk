@@ -359,8 +359,9 @@ Schedule_t	slFear[] =
 	{ 
 		tlFear,
 		ARRAYSIZE ( tlFear ), 
-		bits_COND_NEW_ENEMY,
-		0,
+		bits_COND_NEW_ENEMY |
+		bits_COND_HEAR_SOUND,
+		bits_SOUND_DANGER,
 		"Fear"
 	},
 };
@@ -844,6 +845,19 @@ void CScientist :: RunTask( Task_t *pTask )
 		break;
 	}
 }
+
+int CScientist::ObjectCaps( void )
+{
+	int classification = Classify();
+	int caps = CTalkMonster::ObjectCaps();
+
+	if ( m_fPlayerAlly || classification == CLASS_PLAYER || classification == CLASS_PLAYER_ALLY
+	     || classification == CLASS_HUMAN_PASSIVE || classification == CLASS_PLAYER_BIOWEAPON )
+		caps |= FCAP_IMPULSE_USE;
+
+	return caps;
+}
+
 
 //=========================================================
 // Classify - indicates this monster's place in the 

@@ -16,7 +16,7 @@ public:
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	void RunTask( Task_t *pTask );
 	void StartTask( Task_t *pTask );
-	int ObjectCaps( void ) { return CTalkMonster::ObjectCaps() | FCAP_IMPULSE_USE; }
+	int ObjectCaps( void );
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	virtual int FriendNumber( int arrayNumber );
 	void SetActivity( Activity newActivity );

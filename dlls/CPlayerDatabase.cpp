@@ -370,7 +370,7 @@ void CPlayerDatabase::DecodeServerResponse()
 			return;
 		}
 
-		if ( level < EXTRAS_BARRED || level > EXTRAS_DEVELOPER || strcmp( returnedAuthId, m_szAuthId )
+		if ( level < EXTRAS_BANNED || level > EXTRAS_DEVELOPER || strcmp( returnedAuthId, m_szAuthId )
 		     || returnedTimestamp != m_iTimestamp || strcmp( returnedIp, m_szIpAddress ) )
 		{
 			ALERT( at_warning, "CPlayerDatabase: Mismatched query response.\n" );
@@ -378,7 +378,7 @@ void CPlayerDatabase::DecodeServerResponse()
 			return;
 		}
 
-		if ( level == EXTRAS_BARRED )
+		if ( level == EXTRAS_BANNED )
 			ALERT( at_aiconsole, "CPlayerDatabase: Downloaded, %s is shadow banned.\n", returnedAuthId );
 		else if ( level == EXTRAS_NONE )
 			ALERT( at_aiconsole, "CPlayerDatabase: Downloaded, %s has no extras.\n", returnedAuthId );

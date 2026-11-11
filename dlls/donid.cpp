@@ -25,7 +25,7 @@ const char *ExtrasLevelToString( int level )
 			return "Init";
 		case EXTRAS_ERROR:
 			return "Error";
-		case EXTRAS_BARRED:
+		case EXTRAS_BANNED:
 			return "Barred";
 		case EXTRAS_NONE:
 			return "None";
@@ -187,7 +187,7 @@ bool DecodePlayerDbResponse( extrasinfo_s &extras, const unsigned char *response
 	delete[] decoded;
 
 	if ( fields < EXTRAS_RESPONSE_FIELD_COUNT || !returnedIp[0] || !returnedTimestamp || !returnedAuthId[0] || !returnedTimeZone[0]
-		|| !name[0] || !description[0] || level < EXTRAS_BARRED || level > EXTRAS_DEVELOPER )
+		|| !name[0] || !description[0] || level < EXTRAS_BANNED || level > EXTRAS_DEVELOPER )
 		return false;
 
 	if ( strcmp( returnedIp, ipAddress ) || returnedTimestamp != timestamp || strcmp( returnedAuthId, authId ) )

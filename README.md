@@ -16,9 +16,9 @@ git submodule update --init --recursive
 
 ## Building
 
-### Visual Studio 2022
+### Visual Studio 2019
 
-Install `v142` toolset/Windows 10 SDK, then open:
+Install `v142` toolset, Windows 10 SDK and open:
 
 ```text
 projects/vs2010/svencoop.sln

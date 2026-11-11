@@ -213,7 +213,7 @@ bool CPlayerExtrasList::LoadCSV( const char *text, size_t length )
 			break;
 		}
 
-		if ( !info.szAuthId[0] || info.iLevel < EXTRAS_BARRED || info.iLevel > EXTRAS_DEVELOPER )
+		if ( !info.szAuthId[0] || info.iLevel < EXTRAS_BANNED || info.iLevel > EXTRAS_DEVELOPER )
 			continue;
 
 		info.iSource = EXTRAS_SOURCE_LOCAL;

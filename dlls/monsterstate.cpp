@@ -286,9 +286,7 @@ MONSTERSTATE CBaseMonster :: GetIdealState ( void )
 }
 
 //=========================================================
-// FaceSound - turns toward a heard sound; a sound made by
-// a friend sometimes turns the monster where that friend
-// is looking instead
+// FaceSound - turn toward a sound or follow a friend's look direction
 //=========================================================
 #define FACE_SOUND_LOOK_DIST	2048
 

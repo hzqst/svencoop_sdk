@@ -57,7 +57,8 @@ public:
 	virtual bool OnMapStart(void);
 	virtual void PostMapStart(bool success) {}
 
-	// MSVC reverses the overload group; this order keeps the vtable layout on both platforms
+	// MSVC reverses this overload group
+	// Keep the order to match vtables on both platforms
 	virtual bool CallFunctionOnAllModules(CBasePlayer *player, unsigned char moduleTypes,
 		const CASHook &hook, int argumentCount, va_list arguments);
 	virtual bool CallFunctionOnAllModules(CBasePlayer *player, unsigned char moduleTypes,

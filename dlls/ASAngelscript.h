@@ -20,7 +20,6 @@ public:
 private:
 	friend class CASBaseScriptGlobal<IASServerScriptGlobal, CAngelscript>;
 
-	// Private spelling of the observed inline base initialization
 	CAngelscript();
 };
 

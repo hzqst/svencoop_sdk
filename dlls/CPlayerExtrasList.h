@@ -3,7 +3,6 @@
 
 #include "donid.h"
 
-// Adapter for the extras list owned by CServer; this is not the CServer ABI
 class CPlayerExtrasList
 {
 public:

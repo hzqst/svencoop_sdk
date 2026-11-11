@@ -431,7 +431,7 @@ void CASScheduler::SetInterval(void *object, int typeId, const CString &function
 
 	CASArguments *arguments = new CASArguments;
 
-	// This allocation is retained when argument capture fails
+	// Arguments stay allocated on failure
 	if (!arguments->SetArguments(generic, firstArgument))
 	{
 		CASLog::GetInstance()->Error(AS_LOG_DEFAULT,

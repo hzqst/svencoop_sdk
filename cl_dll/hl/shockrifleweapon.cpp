@@ -185,7 +185,7 @@ void CShockRifle::PrimaryAttack( void )
 }
 
 // Continuous beam attack
-// The beam itself is drawn by the server; the client only plays the event
+// The server draws the beam
 void CShockRifle::BeamFire( const Vector &vecSrc, const Vector &vecDir )
 {
 	PLAYBACK_EVENT_FULL( FEV_NOTHOST, m_hPlayer->edict(), m_usShockRifleBeam, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, 0.0, 0.0, 0, 0, 0, 0 );

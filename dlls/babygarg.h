@@ -58,7 +58,7 @@ private:
 	static const char *pDieSounds[];
 
 	EHANDLE m_hEyeGlow;
-	float   m_flEyeBrightness; // Retained while the eye sprite is removed
+	float   m_flEyeBrightness;
 	EHANDLE m_hFlame[4];
 	int     m_eyeBrightness;
 	float   m_seeTime;

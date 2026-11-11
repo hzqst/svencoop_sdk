@@ -103,7 +103,7 @@ struct cl_entity_s
 	// Other entity local information
 	int						trivial_accept;
 
-	struct model_s* model;			// cl.model_precache[ curstate.modelindes ];  all visible entities have a model
+	struct model_s* model;			// All visible entities have a precached model
 	struct efrag_s* efrag;			// linked list of efrags
 	struct mnode_s* topnode;		// for bmodels, first world node that splits bmodel, or NULL if not split
 

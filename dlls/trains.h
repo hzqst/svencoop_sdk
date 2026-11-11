@@ -128,7 +128,6 @@ public:
 	string_t					m_iszGoal;
 	CEntityHandle<CPathTrack>	m_hPath;
 
-	// Zeroed by the constructor; no established semantic use
 	unsigned int	m_Unresolved150;
 	unsigned int	m_Unresolved154;
 

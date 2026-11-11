@@ -241,7 +241,7 @@ struct weapon_data_s;
 #define WEAPONCUSTOM_SND_SPLAUNCHER_FIRE		23
 #define WEAPONCUSTOM_SND_SPLAUNCHER_ALTFIRE		24
 
-// CBasePickupObject::CanCollect; only a non-zero type is tested, the names are guesses
+// Pickup collection modes
 typedef enum
 {
 	COLLECT_TOUCH = 0,
@@ -449,7 +449,7 @@ public:
 	virtual void	Collect( CBaseEntity *pOther, COLLECT_TYPE collectType ) { }
 };
 
-// Grenades simulate on the server; the client only keeps the entry points
+// Grenade logic runs on the server
 class CGrenade : public CBaseMonster
 {
 public:

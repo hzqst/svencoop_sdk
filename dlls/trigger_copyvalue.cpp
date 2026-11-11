@@ -510,7 +510,8 @@ void CTriggerCopyValue::SpecialValueInt( int *value, int source )
 			if ( !source )
 				*value = *value < 0 ? INT_MIN : INT_MAX;
 			else if ( *value == INT_MIN && source == -1 )
-				// IDIV traps on this pair; preserve the wrapped integer instead
+				// IDIV traps on this pair
+				// Keep the wrapped integer
 				*value = INT_MIN;
 			else
 				*value /= source;
@@ -572,7 +573,7 @@ void CTriggerCopyValue::CopyValue( void )
 			if ( !CopyValueHandleEntity( m_hSource ) || !CopyValueHandleEntity( m_hDestination ) )
 				break;
 
-			// Special targets never advance; the multi-target loop repeats forever
+			// Special target names keep returning the same entity
 			if ( ( pev->spawnflags & SF_COPYVALUE_MULTIPLE_DESTINATIONS ) && previous && m_pNextTarget == previous )
 				break;
 		}

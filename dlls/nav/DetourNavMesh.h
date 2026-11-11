@@ -179,7 +179,7 @@ public:
 private:
 	dtNavMeshParams m_params;
 	dtMeshTile* m_tiles;
-	int m_gridHashSize;			// Bucket mask (buckets - 1); see layout notes above
+	int m_gridHashSize;			// Bucket count minus one
 	dtMeshTile** m_gridBuckets;
 	unsigned int m_nextFreeTile;
 	unsigned int m_tileFreeList;

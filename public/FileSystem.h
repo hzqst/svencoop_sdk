@@ -202,9 +202,9 @@ public:
 	// handle was located in
 	virtual const char		*FindGetCurSearchPath( FileFindHandle_t findHandle ) = 0;
 
-	// NOTE: pack files are always added for the new path; the bool is stored as
-	// the path's allow-write flag. In the Ex functions taking a pathID filter,
-	// the requested pathID may be a '|'-separated list ("GAME|GAMECONFIG")
+	// New search paths always include pack files
+	// bAllowWrite controls writing to the path
+	// Ex functions accept pathID lists such as "GAME|GAMECONFIG"
 	virtual void			AddSearchPathEx( const char *pPath, const char *pathID, bool bAllowWrite, SearchPathAdd_t addType ) = 0;
 	virtual bool			RemoveSearchPathEx( const char *pPath, const char *pathID ) = 0;
 	virtual int				GetSearchPath( const char *pathID, bool bGetPackFiles, char *pPath, int nMaxLen ) = 0;

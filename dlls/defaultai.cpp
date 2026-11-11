@@ -764,9 +764,8 @@ Schedule_t slSmallFlinchSpecial[] =
 };
 
 //=========================================================
-// Lose enemy - run to a node at a safe distance from a
-// creature that grabs its victims, until it loses sight of
-// us; fight back when there's nowhere to go
+// Lose enemy - get out of sight of a creature that grabs its victims
+// Fight back if there's nowhere to run
 //=========================================================
 Task_t tlLoseEnemy[] =
 {

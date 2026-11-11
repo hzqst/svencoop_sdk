@@ -11,7 +11,7 @@ int UTIL_FormatString(char *destination, unsigned int size, const char *format, 
 char *UTIL_FixSlashes(char *path);
 void UTIL_FormatNetAdr(char *destination, unsigned int size, struct netadr_s *address);
 
-// Clears the buffer, then formats into it; always terminated
+// Clear the buffer and format a null-terminated string
 template <unsigned int size>
 int UTIL_FormatString(char (&destination)[size], const char *format, ...)
 {

@@ -941,8 +941,7 @@ void CHalfLifeMultiplay :: InitHUD( CBasePlayer *pl )
 
 	UpdateGameMode( pl );
 
-	// sending just one score makes the hud scoreboard active;  otherwise
-	// it is just disabled for single play
+	// Send a score update to enable the HUD scoreboard
 	pl->InitScoreInfo();
 
 	// loop through all active players and send their score info to the new client

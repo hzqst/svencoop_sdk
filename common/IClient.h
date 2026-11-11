@@ -30,10 +30,9 @@ public:
 	// Loads (or finds) a client-side model. Returns a model_t* as an opaque pointer
 	virtual void			*LoadClientModel( const char *pszModelName ) = 0;
 
-	// Formats a network address (passed by value). When a caller buffer is
-	// supplied it is filled and returned; when it is absent (pBuffer NULL /
-	// nMaxLen 0) a pointer to the engine's own static buffer is returned instead
-	// 'onlyBase' omits the port
+	// Format a network address into pBuffer
+	// Use the engine buffer if pBuffer is NULL or nMaxLen is zero
+	// onlyBase omits the port
 	virtual char			*NET_AdrToString( netadr_t a, int onlyBase, char *pBuffer, size_t nMaxLen ) = 0;
 
 	// Parses a network address string into 'a'. Returns true on success

@@ -27,7 +27,7 @@ private:
 	void EXPORT MakeMonster( void );
 	void EXPORT TryThink( void );
 
-	unsigned char	m_unusedStorage[24]; // the constructor clears these bytes; nothing reads them
+	unsigned char	m_unusedStorage[24];
 	string_t		m_iszMonsterClassname;
 	float			m_flScale;
 	float			m_flGround;

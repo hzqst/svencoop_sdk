@@ -899,7 +899,8 @@ CBaseEntity * EHANDLE :: operator -> ()
 }
 
 
-// give health; a negative amount hurts, and health_cap replaces max_health when set
+// Give health up to health_cap or max_health
+// Negative amounts cause damage
 bool CBaseEntity :: TakeHealth( float flHealth, int bitsDamageType, int health_cap )
 {
 	if (!pev->takedamage && !IsPlayer() )
@@ -931,7 +932,7 @@ bool CBaseEntity :: TakeHealth( float flHealth, int bitsDamageType, int health_c
 	return true;
 }
 
-// give armor; armortype holds the armor limit, and armor_cap replaces it when set
+// Give armor up to armor_cap or armortype
 bool CBaseEntity :: TakeArmor( float flArmor, int bitsDamageType, int armor_cap )
 {
 	if ( !pev->takedamage )

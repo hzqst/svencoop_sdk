@@ -114,7 +114,7 @@ void CBaseAnimating :: ResetSequenceInfo ( )
 	void *pmodel = GET_MODEL_PTR( ENT(pev) );
 	float flGroundSpeed;
 
-	// only a moving sequence replaces the ground speed; others keep the gait's
+	// Only moving sequences replace the gait ground speed
 	switch ( GetSequenceActivityName( pev->sequence ) )
 	{
 	case ACT_WALK:
@@ -145,7 +145,7 @@ int CBaseAnimating :: GetSequenceActivityName( int iSequence )
 	return ::GetSequenceActivityName( GET_MODEL_PTR( ENT( pev ) ), iSequence );
 }
 
-// Only moving gaits carry a ground speed; fuser2 is the gait animation clock
+// Update gait speed and reset the animation clock in fuser2
 void CBaseAnimating :: ResetGaitSequenceInfo( void )
 {
 	void *pmodel = GET_MODEL_PTR( ENT( pev ) );

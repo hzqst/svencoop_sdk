@@ -958,7 +958,8 @@ public:
 	}
 };
 
-// Creates the script entity registered as pszClassName on pev; NULL (and pev freed) on failure
+// Create a script entity on pev
+// Return NULL and free pev on failure
 CBaseEntity *CreateCustomEntity( const char *pszClassName, entvars_t *pev );
 edict_t *ASCreateCustomEntity( const char *pszClassName );
 edict_t *ASCreateCustomEntity( string_t iszClassName );

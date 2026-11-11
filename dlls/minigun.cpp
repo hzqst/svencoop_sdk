@@ -361,7 +361,7 @@ void CMinigun::WeaponIdle( void )
 	}
 }
 
-// A carried minigun can't be used; a dropped one must be used to pick it up
+// Use a dropped minigun to pick it up
 int CMinigun::ObjectCaps( void )
 {
 	if ( m_hPlayer )

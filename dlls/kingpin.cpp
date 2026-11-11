@@ -1164,7 +1164,7 @@ CBaseEntity *CKingpinPlasmaBall::BestVisibleEnemy( void )
 	{
 		if ( candidate->IsAlive() || candidate->IsBSPModel() )
 		{
-			// Look filters these entities; the traversal keeps this node
+			// Keep this node when Look rejects the entity
 			if ( candidate->pev->flags & FL_NOTARGET )
 				continue;
 

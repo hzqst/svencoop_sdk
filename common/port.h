@@ -109,8 +109,7 @@ extern char g_szEXEName[ 4096 ];
 
 #define _snprintf snprintf
 
-// The C sources use the win32 spellings. C++ gets std::min/std::max instead,
-// defining these would break every STL header that declares them
+// Define min/max macros only for C to avoid conflicts with std::min and std::max
 #if !defined( __cplusplus )
 #ifndef min
 #define min( a, b )		( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )

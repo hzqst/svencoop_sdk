@@ -33,7 +33,6 @@ public:
 	private:
 		friend class CASScheduler;
 
-		// Private spelling of the inline allocation recipe
 		CScheduledFunction(CASBaseCallable *function, float nextCallTime, float repeatTime,
 		                   int repeatCount, void *object, int typeId, CASArguments *arguments);
 

@@ -1,7 +1,7 @@
 #ifndef CLIENT_MESSAGEBOX_H
 #define CLIENT_MESSAGEBOX_H
 
-// Win32 MessageBox-style values; the icons double as SDL message box flags
+// MessageBox constants with SDL-compatible icon flags
 #define MSGBOX_ICONERROR		0x10
 #define MSGBOX_ICONWARNING		0x20
 #define MSGBOX_ICONINFORMATION	0x40

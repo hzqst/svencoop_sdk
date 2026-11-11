@@ -415,8 +415,7 @@ Activity CBaseMonster :: GetDeathActivity ( void )
 		deathActivity = ACT_DIESIMPLE;
 	}
 
-	// underwater and blast-killed monsters always fall where they died;
-	// skip the fall-room checks for them
+	// No room checks for underwater or blast deaths
 	if ( pev->waterlevel > 1 || m_fDeathKnockback )
 		return deathActivity;
 
@@ -498,8 +497,8 @@ Activity CBaseMonster :: GetSmallFlinchActivity ( void )
 }
 
 
-// A walking corpse keeps its movetype and is aligned to the
-// ground; a fading corpse keeps 1 health. flSavedHealth isn't used
+// Keep walking corpses aligned to the ground
+// Fading corpses keep 1 health
 void CBaseMonster::BecomeDead( float flSavedHealth )
 {
 	pev->takedamage = DAMAGE_YES;// don't let autoaim aim at corpses.
@@ -583,8 +582,7 @@ void CBaseMonster::AlignToGround( void )
 }
 
 //=========================================================
-// FloatInWater - a corpse in water drifts up and spins
-// slowly; one above water sinks back to it
+// FloatInWater - move corpses toward the water surface
 //=========================================================
 #define CORPSE_WATER_DRAG		0.7
 #define CORPSE_SPIN_SPEED		10
@@ -850,9 +848,8 @@ void CBaseMonster :: Killed( entvars_t *pevAttacker, int iGib )
 
 	m_IdealMonsterState = MONSTERSTATE_DEAD;
 
-	// NPC kill logging. Logging a monster's death requires
-	// sv_log_monster_deaths; logging damage between monsters requires
-	// sv_log_monster_monster_kills
+	// NPC death logging uses sv_log_monster_deaths
+	// Kills by other monsters use sv_log_monster_monster_kills
 	float flLogDeaths = CVAR_GET_FLOAT( "sv_log_monster_deaths" );
 
 	if ( pevAttacker )

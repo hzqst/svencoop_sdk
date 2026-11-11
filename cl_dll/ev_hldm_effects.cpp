@@ -102,8 +102,7 @@ TEMPENTITY *EV_Gib(GIBTYPE type, int bloodColor, float *origin, float *velocity,
 	return gib;
 }
 
-// baseline.vuser1 keeps the last origin and baseline.fuser1 the speed it implies;
-// the hit callbacks only leave blood decals when the gib was moving
+// Save the gib position and speed for blood decals on impact
 void EV_TE_GibCallback(TEMPENTITY *ent, float frametime, float currenttime)
 {
 	Vector delta = ent->entity.origin - ent->entity.baseline.vuser1;

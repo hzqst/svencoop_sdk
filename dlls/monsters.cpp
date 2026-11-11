@@ -649,9 +649,8 @@ void CBaseMonster :: CheckFallDamage( void )
 }
 
 //=========================================================
-// CheckAndApplyGenericAttacks - attacking on the move. The
-// attack plays as the sequence and the movement as the gait;
-// without m_afMoveShootCap the monster only moves
+// CheckAndApplyGenericAttacks - play the attack over the movement gait
+// Requires m_afMoveShootCap to attack while moving
 //=========================================================
 void CBaseMonster :: CheckAndApplyGenericAttacks( void )
 {
@@ -855,7 +854,7 @@ void CBaseMonster :: CheckCreatureDanger( void )
 		return;
 	}
 
-	// otherwise a close one going for us becomes the enemy; the babygarg isn't in this list
+	// Target nearby danger creatures that are chasing us
 	CBaseEntity *pEntity = NULL;
 	CBaseMonster *pDanger = NULL;
 
@@ -3566,8 +3565,7 @@ int CBaseEntity::IRelationship( CBaseEntity *other, bool ignoreNoTarget )
 }
 
 //=========================================================
-// Friendly fire checks. Only squad monsters care; the other
-// monsters (and players) in the world are what can be hit
+// Check whether a squad monster would hit another monster or player
 //=========================================================
 #define FRIENDLY_FIRE_MAX_MONSTERS	256
 #define BULLET_CONE_DOT				0.95	// cos of the half angle bullets are expected to spread over
@@ -3835,7 +3833,7 @@ bool SV_NewChaseDir( edict_t *actor, Vector vecGoal, float dist, edict_t *pentTa
 	return false;
 }
 
-// Step along yaw; when blocked and fChaseGoal is set, look for another way to vecGoal
+// Try another route to vecGoal if the step is blocked and fChaseGoal is set
 bool SV_MoveToLocation( edict_t *ent, float yaw, Vector vecGoal, float dist, edict_t *pentTarget, bool fChaseGoal )
 {
 	if ( SV_StepDirection( ent, yaw, dist, pentTarget ) )
@@ -3847,7 +3845,7 @@ bool SV_MoveToLocation( edict_t *ent, float yaw, Vector vecGoal, float dist, edi
 	return SV_NewChaseDir( ent, vecGoal, dist, pentTarget );
 }
 
-// The gait plays on the legs; an activity the model lacks clears it
+// Clear the leg animation if the model has no matching activity
 void CBaseMonster::SetGaitActivity( Activity NewActivity )
 {
 	int iSequence = LookupActivity( NewActivity );

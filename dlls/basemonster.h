@@ -133,7 +133,7 @@ public:
 
 	int					m_lastDamageAmount;// how much damage did monster (player) last take
 	float				m_tbdPrev;			// time-based damage was last checked at this time
-	entvars_t			*m_pevPoisoner;		// who poisoned us; poison damage is credited to them
+	entvars_t			*m_pevPoisoner;		// Entity credited with poison damage
 											// time based damage counters, decr. 1 per 2 seconds
 	int					m_bloodColor;		// color of blood particless
 
@@ -318,7 +318,7 @@ public:
 		virtual BOOL ShouldAdvanceRoute( float flWaypointDist );
 
 		virtual Activity GetStoppedActivity( void ) { return ACT_IDLE; }
-		// clears the gait; a moving monster switches to its stopped activity
+		// Clear the gait and switch to the stopped activity
 		virtual void Stop( void )
 		{
 			pev->gaitsequence = GAIT_SEQUENCE_NONE;

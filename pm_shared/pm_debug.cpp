@@ -114,7 +114,7 @@ void CPlayerMove::ParticleLine( const Vector &start, const Vector &end, int pcol
 	vec3_t curpos;
 	vec3_t diff;
 	int i;
-	// Determine distance;
+	// Determine distance
 
 	VectorSubtract(end, start, diff);
 

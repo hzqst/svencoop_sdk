@@ -173,7 +173,7 @@ void CTriggerNumericDisplay::Update( int value )
 					entry = previousEntity;
 				}
 
-				// Traversal retains this pointer across digit boundaries
+				// Keep the previous entity when moving to the next digit
 				previousEntity = entry;
 				entry = entry ? entry->next : digit->entities;
 			}

@@ -88,7 +88,7 @@ int Entity_FindMonstersInWorld( CScriptArray *array, int flagMask, CBaseEntity *
 		return 0;
 	}
 
-	// This adapter does not release this incoming array handle
+	// Don't release the input array handle
 	return entity->FindMonstersInWorld( (CBaseEntity **) array->GetBuffer(), array->GetSize(), flagMask );
 }
 

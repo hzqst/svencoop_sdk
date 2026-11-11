@@ -17,7 +17,6 @@ public:
 	void SetGCFlag(void) const { m_bGCFlag = true; }
 
 protected:
-	// Protected spelling of the observed inline base initialization
 	CASGCBaseClass() : m_bGCFlag(false) {}
 
 private:

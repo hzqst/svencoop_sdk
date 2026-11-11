@@ -509,7 +509,8 @@ void CTriggerChangeValue::SpecialValueInt( int *value, int source )
 			if ( !source )
 				*value = *value < 0 ? INT_MIN : INT_MAX;
 			else if ( *value == INT_MIN && source == -1 )
-				// IDIV traps on this pair; preserve the wrapped integer instead
+				// IDIV traps on this pair
+				// Keep the wrapped integer
 				*value = INT_MIN;
 			else
 				*value /= source;

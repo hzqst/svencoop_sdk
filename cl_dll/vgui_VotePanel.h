@@ -3,7 +3,7 @@
 
 #include "vgui_Inventory.h"
 
-// MapList message operations; any other value appends a range of maps
+// Other MapList values append maps
 #define MAPLIST_RESET	0
 #define MAPLIST_END		123
 

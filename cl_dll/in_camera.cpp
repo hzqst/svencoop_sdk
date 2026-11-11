@@ -96,7 +96,7 @@ POINT		cam_mouse;
 static kbutton_t cam_pitchup, cam_pitchdown, cam_yawleft, cam_yawright;
 static kbutton_t cam_in, cam_out, cam_move;
 
-// Offset the camera eases towards; the ideal cvars only change when it is saved
+// Camera offsets used between saves to the ideal cvars
 static float s_flCamPitch = CAM_ANGLE_UNSET;
 static float s_flCamYaw = CAM_ANGLE_UNSET;
 static int s_iCamTargetDist = CAM_DIST_UNSET;

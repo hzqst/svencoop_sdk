@@ -37,7 +37,7 @@ typedef enum
 	matLastMaterial
 } Materials;
 
-#define NUM_SHARDS 6 // this many shards spawned when breakable objects break;
+#define NUM_SHARDS 6 // Number of shards per broken object
 
 #define SF_BREAK_REPAIRABLE			8
 #define SF_BREAK_IMMUNE_CLIENTS		64

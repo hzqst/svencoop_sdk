@@ -352,7 +352,7 @@ void CBaseEntity :: SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, f
 
 int giTargetRecursionLevel = 0;
 
-// A filter is a list of names; type 0 refuses the names listed and type 1 refuses all others
+// Type 0 blocks listed names and type 1 allows only listed names
 bool DoesFilterAllowTrigger( const char *pszName, const char *pszFilter, int iType )
 {
 	if ( UTIL_FindTokenInTokenList( pszName, pszFilter ) )

@@ -194,7 +194,8 @@ void CTriggerCustomSave::SaveData( void )
 
 		size_t prefixLength = strlen( contents );
 
-		// The empty-prefix path would read before the allocation; keep the text operation bounded
+		// An empty prefix would read before the buffer
+		// Keep the text operation bounded
 		if ( prefixLength && contents[prefixLength - 1] == '\n' )
 			contents[prefixLength - 1] = 0;
 

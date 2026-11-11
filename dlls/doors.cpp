@@ -341,7 +341,7 @@ bool CBaseDoor::CanInstantBreak( CBaseEntity *attacker, int weapon )
 	{
 		CCrowbar *crowbar = dynamic_cast<CCrowbar *>( active->GetWeaponPtr() );
 
-		// Electric crowbar selector; it differs from the inventory weapon ID
+		// Door activation uses a separate ID for the electric crowbar
 		if ( crowbar && crowbar->m_fElectric )
 			weaponId = 19;
 	}
@@ -1663,7 +1663,7 @@ void CBaseDoor::Die( void )
 	if ( diagonal < 165 )
 		sizeScale = diagonal > 80 ? ( 165 - diagonal ) / 56.666668f + 1 : 2.5f;
 
-	// The clamp tests the scaled component but retains its unscaled value
+	// Test the scaled component without scaling the saved value
 	for ( int i = 0; i < 3; ++i )
 	{
 		if ( velocity[i] * sizeScale >= 1300 )

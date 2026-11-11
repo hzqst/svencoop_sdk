@@ -202,7 +202,7 @@ int CPlayerMove::PlayerShouldBypassEntity( physent_t *entity )
 	return true;
 }
 
-// Trace callback; the engine calls back without an object
+// Use a free function for the engine trace callback
 int pfnPlayerShouldBypassEntity( physent_t *entity )
 {
 	return g_Pmove.PlayerShouldBypassEntity( entity );

@@ -142,10 +142,10 @@ public:
 	int  Classify ( void );
 	int ObjectCaps( void );
 
-	virtual float GetPointsForDamage(float flDamage)
+	virtual float GetPointsForDamage( float flDamage )
 	{
 		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
-		return min(4,(flDamage/pev->max_health) * (4 * (pev->max_health/sk_hgrunt_health.value)));
+		return V_min( 4, ( flDamage / pev->max_health ) * ( 4 * ( pev->max_health / sk_hgrunt_health.value ) ) );
 	}
 
 	int ISoundMask ( void );
@@ -204,9 +204,9 @@ public:
 
 	Vector	m_vecTossVelocity;
 
-	BOOL	m_fThrowGrenade;
-	BOOL	m_fStanding;
-	BOOL	m_fFirstEncounter;// only put on the handsign show in the squad's first encounter.
+	bool	m_fThrowGrenade;
+	bool	m_fStanding;
+	bool	m_fFirstEncounter;// only put on the handsign show in the squad's first encounter.
 	int		m_cClipSize;
 
 	int m_voicePitch;
@@ -235,9 +235,9 @@ TYPEDESCRIPTION	CHGrunt::m_SaveData[] =
 	DEFINE_FIELD( CHGrunt, m_flNextPainTime, FIELD_TIME ),
 //	DEFINE_FIELD( CHGrunt, m_flLastEnemySightTime, FIELD_TIME ), // don't save, go to zero
 	DEFINE_FIELD( CHGrunt, m_vecTossVelocity, FIELD_VECTOR ),
-	DEFINE_FIELD( CHGrunt, m_fThrowGrenade, FIELD_BOOLEAN ),
-	DEFINE_FIELD( CHGrunt, m_fStanding, FIELD_BOOLEAN ),
-	DEFINE_FIELD( CHGrunt, m_fFirstEncounter, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CHGrunt, m_fThrowGrenade, FIELD_CHARACTER ),
+	DEFINE_FIELD( CHGrunt, m_fStanding, FIELD_CHARACTER ),
+	DEFINE_FIELD( CHGrunt, m_fFirstEncounter, FIELD_CHARACTER ),
 	DEFINE_FIELD( CHGrunt, m_cClipSize, FIELD_INTEGER ),
 	DEFINE_FIELD( CHGrunt, m_voicePitch, FIELD_INTEGER ),
 //  DEFINE_FIELD( CShotgun, m_iBrassShell, FIELD_INTEGER ),
@@ -2871,7 +2871,12 @@ void CHGrunt::UpdateSpot( bool instant )
 class CHGruntRepel : public CBaseMonster
 {
 public:
-	float GetPointsForDamage( float flDamage ) { return 0; }
+	float GetPointsForDamage( float flDamage )
+	{
+		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+		return 0;
+	}
+
 	void Spawn( void );
 	void Precache( void );
 	void EXPORT RepelUse ( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );

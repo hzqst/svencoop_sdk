@@ -250,6 +250,7 @@ int CBabyGarg::ObjectCaps( void )
 
 float CBabyGarg::GetPointsForDamage( float flDamage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return ( pev->max_health / sk_babygargantua_health.value ) * 15.0f * ( flDamage / pev->max_health );
 }
 

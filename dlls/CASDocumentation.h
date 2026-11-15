@@ -5,6 +5,8 @@
 #include "CHashStringPool.h"
 #include <angelscript.h>
 
+class CCommand;
+
 class CKeyvaluesWriter;
 
 // Script access mask bits, one for each ModuleType
@@ -51,6 +53,7 @@ public:
 	void RegistrationComplete(void);
 
 private:
+	friend void as_showversioninfo_Callback( const CCommand &command );
 	friend class CASBaseRegistration;
 	friend class CASServerRegistration;
 

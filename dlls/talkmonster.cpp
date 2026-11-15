@@ -1461,13 +1461,13 @@ void CTalkMonster :: FollowerPlayerUse( CBaseEntity *pActivator, CBaseEntity *pC
 	if ( pCaller == NULL || !pCaller->IsPlayer() )
 		return;
 
+	if ( IRelationship( pCaller, true ) > R_NO )
+		return;
+
 	// don't leave a patient I'm already attending to
 	CBaseEntity *pPatient = m_hHealTarget;
 
-	if ( pPatient && pPatient->MyMonsterPointer() && pPatient->MyMonsterPointer()->m_hHealer == this )
-		return;
-
-	if ( IRelationship( pCaller, true ) > R_NO )
+	if ( pPatient && pPatient->m_hHealer == this )
 		return;
 
 	// Pre-disaster followers can't be used

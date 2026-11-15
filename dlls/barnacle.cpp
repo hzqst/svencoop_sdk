@@ -41,7 +41,12 @@ extern cvar_t sk_barnacle_health;
 class CBarnacle : public CBaseMonster
 {
 public:
-	float GetPointsForDamage( float flDamage ) { return pev->max_health / sk_barnacle_health.value * ( flDamage / pev->max_health ); }
+	float GetPointsForDamage( float flDamage )
+	{
+		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+		return pev->max_health / sk_barnacle_health.value * ( flDamage / pev->max_health );
+	}
+
 	void UpdateOnRemove( void )
 	{
 		CBaseMonster::UpdateOnRemove();

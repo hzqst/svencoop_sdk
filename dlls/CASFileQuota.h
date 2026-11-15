@@ -7,6 +7,8 @@
 #include <map>
 #include <string.h>
 
+class CCommand;
+
 struct CStringLess
 {
 	bool operator()(const CString &first, const CString &second) const
@@ -39,6 +41,8 @@ public:
 	void ValidateFileList(void);
 
 private:
+	friend void as_fs_quota_usage_Callback( const CCommand &command );
+
 	struct FileData_t
 	{
 		CString			m_szFileName;

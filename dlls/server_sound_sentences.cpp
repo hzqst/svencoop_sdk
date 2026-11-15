@@ -242,7 +242,7 @@ int CServer_SoundEngine::PlaySentenceGroup(edict_t *entity, const char *name,
 int CServer_SoundEngine::PlaySentenceGroup(edict_t *entity, int index,
 	float volume, float attenuation, int flags, int pitch, int channel)
 {
-	index = max(0, min(MAX_SENTENCE_GROUPS - 1, index));
+	index = V_max(0, V_min(MAX_SENTENCE_GROUPS - 1, index));
 
 	server_sentencegroup_t &group = m_SentenceGroups[index];
 	int sentenceIndex = group.shuffledSentences[group.nextSentence];
@@ -287,14 +287,14 @@ int CServer_SoundEngine::PlaySentenceGroupSequential(edict_t *entity,
 	if (channel <= -1)
 		channel = CHAN_VOICE;
 
-	index = max(0, min(MAX_SENTENCE_GROUPS - 1, index));
+	index = V_max(0, V_min(MAX_SENTENCE_GROUPS - 1, index));
 
 	server_sentencegroup_t &group = m_SentenceGroups[index];
 
 	if (sentenceNumber >= group.count || sentenceNumber < 0 || reset)
 		sentenceNumber = 0;
 
-	sentenceNumber = min(MAX_GROUP_SENTENCES - 1, sentenceNumber);
+	sentenceNumber = V_min(MAX_GROUP_SENTENCES - 1, sentenceNumber);
 
 	int sentenceIndex = group.sentences[sentenceNumber];
 	char sample[MAX_SENTENCE_NAME + 1];

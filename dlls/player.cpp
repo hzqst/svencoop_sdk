@@ -48,6 +48,8 @@
 #include "user_messages.h"
 #include "CServer.h"
 #include "server_support.h"
+#include "server_sound.h"
+#include "client_commands.h"
 #include "AdminLevel.h"
 #include "ConCommandDefs.h"
 #include "observer.h"
@@ -67,6 +69,7 @@ extern DLL_GLOBAL BOOL		g_fGameOver;
 extern DLL_GLOBAL	BOOL	g_fDrawLines;
 bool gEvilImpulse101;
 extern DLL_GLOBAL int		g_iSkillLevel, gDisplayTitle;
+extern bool PM_HACK_GetBarnacleParalyze( void );
 
 
 BOOL gInitHUD = TRUE;
@@ -137,11 +140,11 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 	DEFINE_FIELD( CBasePlayer, m_iExtraSoundTypes, FIELD_INTEGER ),
 	DEFINE_FIELD( CBasePlayer, m_iWeaponFlash, FIELD_INTEGER ),
 	DEFINE_FIELD( CBasePlayer, m_fLongJump, FIELD_CHARACTER ),
-	DEFINE_FIELD( CBasePlayer, m_fInitHUD, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CBasePlayer, m_fInitHUD, FIELD_CHARACTER ),
 	DEFINE_FIELD( CBasePlayer, m_tbdPrev, FIELD_TIME ),
 
-	DEFINE_FIELD( CBasePlayer, m_pTank, FIELD_EHANDLE ),
-	DEFINE_FIELD( CBasePlayer, m_iHideHUD, FIELD_INTEGER ),
+	DEFINE_FIELD( CBasePlayer, m_hTank, FIELD_EHANDLE ),
+	DEFINE_FIELD( CBasePlayer, m_hVehicle, FIELD_EHANDLE ),
 	DEFINE_FIELD( CBasePlayer, m_iFOV, FIELD_INTEGER ),
 	
 	//DEFINE_FIELD( CBasePlayer, m_fDeadTime, FIELD_FLOAT ), // only used in multiplayer games
@@ -272,17 +275,6 @@ int TrainSpeed(int iSpeed, int iMax)
 
 void CBasePlayer :: DeathSound( void )
 {
-	// water death sounds
-	/*
-	if (pev->waterlevel == 3)
-	{
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "player/h2odeath.wav", 1, ATTN_NONE);
-		return;
-	}
-	*/
-
-	EMIT_SOUND(ENT(pev), CHAN_VOICE, "player/pain3.wav", 1, ATTN_NORM);
-
 	// play one of the suit death alarms
 	EMIT_GROUPNAME_SUIT(ENT(pev), "HEV_DEAD");
 }
@@ -600,7 +592,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	int weaponRules = g_pGameRules->DeadPlayerWeapons( this );
 	int ammoRules = g_pGameRules->DeadPlayerAmmo( this );
 
-	if ( (int) CVAR_GET_FLOAT( "mp_dropweapons" ) < 1 )
+	if ( !CanDropPlayerItem( NULL ) )
 		return;
 
 	if ( weaponRules != GR_PLR_DROP_GUN_NO )
@@ -738,7 +730,8 @@ void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 {
 	CSound *pSound;
 
-	// Holster weapon immediately, to allow it to cleanup
+	STOP_SOUND( edict(), CHAN_STATIC, "weapons/egon_run3.wav" );
+
 	if ( pev->health > 0 )
 		pev->health = 0;
 
@@ -752,9 +745,9 @@ void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 	if ( iGib != 3 )
 		g_pGameRules->PlayerKilled( this, pevAttacker, g_pevLastInflictor );
 
-	if ( m_pTank != NULL )
+	if ( m_hTank != NULL )
 	{
-		m_pTank->Use( this, this, USE_OFF, 0 );
+		m_hTank->Use( this, this, USE_OFF, 0 );
 	}
 
 	if ( m_hVehicle )
@@ -1590,11 +1583,11 @@ void CBasePlayer::PlayerUse ( void )
 	// Hit Use on a train?
 	if ( m_afButtonPressed & IN_USE )
 	{
-		if ( m_pTank != NULL )
+		if ( m_hTank != NULL )
 		{
 			// Stop controlling the tank
 			// TODO: Send HUD Update
-			m_pTank->Use( this, this, USE_OFF, 0 );
+			m_hTank->Use( this, this, USE_OFF, 0 );
 			return;
 		}
 		else
@@ -1836,14 +1829,14 @@ void CBasePlayer::SendScoreInfoToOtherPlayer( edict_t *recipient, int classifica
 	float health = -128.0f;
 
 	if ( !( ( hideHUD & HIDEHUD_HEALTH ) && IsAlive() ) && relationship < R_NO )
-		health = IsAlive() ? max( 0.001f, pev->health ) : -1.0f;
+		health = IsAlive() ? V_max( 0.001f, pev->health ) : -1.0f;
 
 	WritePlayerScoreFloat( health );
 
 	float armor = -128.0f;
 
 	if ( !( hideHUD & HIDEHUD_ARMOR ) && relationship < R_NO )
-		armor = pev->weapons < 0 ? max( 0.0f, pev->armorvalue ) : -1.0f;
+		armor = pev->weapons < 0 ? V_max( 0.0f, pev->armorvalue ) : -1.0f;
 
 	WritePlayerScoreFloat( armor );
 	WRITE_BYTE( classification );
@@ -1909,6 +1902,12 @@ void CBasePlayer::SendScoreInfo( edict_t *recipient )
 		if ( player )
 			SendScoreInfoToOtherPlayer( player->edict(), classification, teamName );
 	}
+}
+
+float CBasePlayer::GetPointsForDamage( float flDamage )
+{
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return 0 * flDamage;
 }
 
 void CBasePlayer::AddPoints( int score, bool bAllowNegativeScore )
@@ -2478,11 +2477,8 @@ void CBasePlayer::CheckSuitUpdate()
 	// if in range of radiation source, ping geiger counter
 	UpdateGeigerCounter();
 
-	if ( g_pGameRules->IsMultiplayer() )
-	{
-		// don't bother updating HEV voice in multiplayer.
+	if ( mp_hevsuit_voice.value == 0 )
 		return;
-	}
 
 	if ( gpGlobals->time >= m_flSuitUpdate && m_flSuitUpdate > 0)
 	{
@@ -2503,10 +2499,15 @@ void CBasePlayer::CheckSuitUpdate()
 			{
 				// play sentence number
 
-				char sentence[CBSENTENCENAME_MAX+1];
-				strcpy(sentence, "!");
-				strcat(sentence, gszallsentencenames[isentence]);
-				EMIT_SOUND_SUIT(ENT(pev), sentence);
+				const char *name = CServer_SoundEngine::GetSoundEngine()->LookupSentenceName( isentence );
+
+				if ( name )
+				{
+					char sentence[MAX_SENTENCE_NAME + 1];
+					strcpy( sentence, "!" );
+					strcat( sentence, name );
+					EMIT_SOUND_SUIT( ENT(pev), sentence );
+				}
 			}
 			else
 			{
@@ -2522,7 +2523,7 @@ void CBasePlayer::CheckSuitUpdate()
 }
  
 // add sentence to suit playlist queue. if fgroup is true, then
-// name is a sentence group (HEV_AA), otherwise name is a specific
+// name is a sentence group (!HEV_AA), otherwise name is a specific
 // sentence name ie: !HEV_AA0.  If iNoRepeat is specified in
 // seconds, then we won't repeat playback of this word or sentence
 // for at least that number of seconds.
@@ -2538,11 +2539,8 @@ void CBasePlayer::SetSuitUpdate(const char *name, int fgroup, int iNoRepeatTime)
 	if ( !(pev->weapons & (1<<WEAPON_SUIT)) )
 		return;
 
-	if ( g_pGameRules->IsMultiplayer() )
-	{
-		// due to static channel design, etc. We don't play HEV sounds in multiplayer right now.
+	if ( mp_hevsuit_voice.value == 0 )
 		return;
-	}
 
 	// if name == NULL, then clear out the queue
 
@@ -2555,13 +2553,13 @@ void CBasePlayer::SetSuitUpdate(const char *name, int fgroup, int iNoRepeatTime)
 	// get sentence or group number
 	if (!fgroup)
 	{
-		isentence = SENTENCEG_Lookup(name, NULL);
+		isentence = CServer_SoundEngine::GetSoundEngine()->LookupSentenceIndex( (char *) name + 1 );
 		if (isentence < 0)
 			return;
 	}
 	else
 		// mark group number as negative
-		isentence = -SENTENCEG_GetIndex(name);
+		isentence = -CServer_SoundEngine::GetSoundEngine()->LookupSentenceGroupIndex( name + 1 );
 
 	// check norepeat list - this list lets us cancel
 	// the playback of words or sentences that have already
@@ -2774,16 +2772,16 @@ void CBasePlayer::PostThink()
 		goto pt_end;
 
 	// Handle Tank controlling
-	if ( m_pTank != NULL )
+	if ( m_hTank != NULL )
 	{ // if they've moved too far from the gun,  or selected a weapon, unuse the gun
-		if ( m_pTank->OnControls( pev ) && !pev->weaponmodel )
+		if ( m_hTank->OnControls( pev ) && !pev->weaponmodel )
 		{  
-			m_pTank->Use( this, this, USE_SET, 2 );	// try fire the gun
+			m_hTank->Use( this, this, USE_SET, 2 );	// try fire the gun
 		}
 		else
 		{  // they've moved off the platform
-			m_pTank->Use( this, this, USE_OFF, 0 );
-			m_pTank = NULL;
+			m_hTank->Use( this, this, USE_OFF, 0 );
+			m_hTank = NULL;
 		}
 	}
 
@@ -3038,6 +3036,150 @@ ReturnSpot:
 	return pSpot->edict();
 }
 
+bool CBasePlayer::IsMoving( void )
+{
+	return pev->velocity != g_vecZero;
+}
+
+bool CBasePlayer::IsRevivable( void )
+{
+	return AreBaseReviveConditionsMet() && !( pev->effects & EF_NODRAW );
+}
+
+void CBasePlayer::BeginRevive( float flTimeUntilRevive )
+{
+}
+
+void CBasePlayer::Revive( void )
+{
+	SetThink( NULL );
+	pev->rendermode = m_iOriginalRenderMode;
+	pev->renderfx = m_iOriginalRenderFX;
+	pev->renderamt = m_flOriginalRenderAmount;
+	pev->rendercolor = m_vecOriginalRenderColor;
+
+	SpecialSpawn();
+	pev->flags &= ~FL_FROZEN;
+	g_PlayerRevivedHook.Call( 0, this );
+}
+
+void CBasePlayer::SpecialSpawn( void )
+{
+	memset( m_flNextWeaponPickup, 0, sizeof( m_flNextWeaponPickup ) );
+	pev->deadflag = DEAD_NO;
+	m_pObserver->StopObserver( false );
+
+	pev->health = pev->max_health * 0.5f;
+
+	if ( pev->health < 1.0f )
+		pev->health = 1.0f;
+
+	if ( pev->health > pev->max_health )
+		pev->health = pev->max_health;
+
+	pev->takedamage = DAMAGE_AIM;
+	pev->solid = SOLID_SLIDEBOX;
+	pev->movetype = MOVETYPE_WALK;
+	pev->flags = ( pev->flags & FL_FAKECLIENT ) | FL_CLIENT;
+	pev->air_finished = gpGlobals->time + 12.0f;
+	pev->dmg = 2;
+	pev->effects = 0;
+	pev->dmg_take = 0;
+	pev->dmg_save = 0;
+	pev->friction = 1.0f;
+	m_bitsHUDDamage = -1;
+	m_bitsDamageType = 0;
+	m_afPhysicsFlags = 0;
+	m_fWeaponsBlocked = false;
+	m_iKeyValueCheats = 0;
+	m_iCheats = 0;
+	m_fLongJump = false;
+
+	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "nolj", "0" );
+	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "hl", "1" );
+
+	m_flMaxSpeedOverride = -1.0f;
+	UpdatePlayerSpeed();
+	m_flMaxSpeed = (float) (int) ceil( (double) CVAR_GET_FLOAT( "sv_maxspeed" ) );
+	UpdatePlayerSpeed();
+
+	pev->iuser4 = 0;
+	pev->fuser4 = -1.0f;
+	m_iFOV = 0;
+	m_iClientFOV = -1;
+	m_flNextDecalTime = 0;
+	m_flTimeStepSound = 0;
+	m_flFieldOfView = 0.5f;
+	m_flgeigerDelay = gpGlobals->time + 2.0;
+	m_flNextAttack = UTIL_WeaponTimeBase();
+	StartSneaking();
+
+	m_iFlashBattery = 99;
+	m_flFlashLightTime = 1;
+	m_flFallVelocity = 0;
+	m_vecViewModelPos = g_vecZero;
+	m_bViewModelPos = false;
+	m_bDeadItemsPacked = false;
+
+	SET_MODEL( ENT( pev ), "models/player.mdl" );
+	g_ulModelIndexPlayer = pev->modelindex;
+	pev->sequence = LookupActivity( ACT_IDLE );
+
+	TraceResult trace;
+
+	UTIL_TraceHull( pev->origin, pev->origin, dont_ignore_monsters, human_hull, edict(), &trace );
+
+	if ( FBitSet( pev->flags, FL_DUCKING ) || !trace.fInOpen )
+	{
+		pev->button |= IN_DUCK;
+		m_afPhysicsFlags |= PFLAG_DUCKING;
+		pev->flags |= FL_DUCKING;
+		pev->view_ofs = Vector( 0, 0, 12 );
+		UTIL_SetSize( pev, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX );
+	}
+	else
+	{
+		UTIL_SetSize( pev, VEC_HULL_MIN, VEC_HULL_MAX );
+		pev->view_ofs = VEC_VIEW;
+	}
+
+	m_fNoPlayerSound = FALSE;
+	m_pLastItem = NULL;
+	m_iClientHideHUD = -1;
+	m_fWeapon = FALSE;
+	m_pClientActiveItem = NULL;
+	m_iClientBattery = -1;
+	m_bRespawnMessageShown = false;
+	m_lastx = m_lasty = 0;
+	m_flNextChatTime = gpGlobals->time;
+	m_flNextClientCommandTime = gpGlobals->time;
+	m_flNextMiscCommandTime = gpGlobals->time;
+	m_flNextNpcCommandTime = 0;
+	m_flRespawnDelayTime = 0;
+
+	g_engfuncs.pfnSetView( edict(), edict() );
+	UTIL_TraceLine( pev->origin + Vector( 0, 0, 32 ), pev->origin, ignore_monsters, edict(), &trace );
+	pev->origin = trace.vecEndPos;
+	FixPlayerCrouchStuck( edict() );
+	FixPlayerStuck( edict() );
+
+	pev->v_angle = g_vecZero;
+	pev->velocity = g_vecZero;
+	pev->punchangle = g_vecZero;
+	pev->fixangle = 1;
+	pev->angles.z = 0;
+
+	if ( m_pActiveItem && !m_fWeaponsBlocked )
+		m_pActiveItem->Deploy();
+
+	ClearTimeBasedDamage();
+	m_idrowndmg = 0;
+	m_idrownrestored = 0;
+	m_hHealer = NULL;
+	pev->air_finished = ( ( m_flEffectRespiration + 12.0f ) + 0.0f ) + gpGlobals->time;
+	ApplyEffects();
+}
+
 void CBasePlayer::Spawn( void )
 {
 	m_pObserver->StopObserver( false );
@@ -3054,7 +3196,7 @@ void CBasePlayer::Spawn( void )
 	pev->solid			= SOLID_SLIDEBOX;
 	pev->movetype		= MOVETYPE_WALK;
 	pev->max_health		= pev->health;
-	pev->flags		   &= FL_PROXY;	// keep proxy flag sey by engine
+	pev->flags		   &= FL_FAKECLIENT;
 	pev->flags		   |= FL_CLIENT;
 	pev->air_finished	= gpGlobals->time + 12;
 	pev->dmg			= 2;				// initial water damage
@@ -3112,6 +3254,7 @@ void CBasePlayer::Spawn( void )
 
 	m_bDeadItemsPacked = false;
 	m_bBarnacleMouth = false;
+	m_hBarnacle = NULL;
 	Inventory_RemoveAllFromHolder( this, false, false, true );
 
 	ResetEffects();
@@ -4361,8 +4504,8 @@ void CBasePlayer::OnDisconnect( void )
 {
 	m_fConnected = false;
 
-	if ( m_pTank )
-		m_pTank->Use( this, this, USE_OFF, 0 );
+	if ( m_hTank )
+		m_hTank->Use( this, this, USE_OFF, 0 );
 
 	if ( m_hVehicle )
 		( (CAdvFuncVehicle *) (CBaseEntity *) m_hVehicle )->PlayerExit( this, true );
@@ -5000,7 +5143,7 @@ void CBasePlayer::UnblockWeapons( CBaseEntity *actor )
 	if ( !m_fWeaponsBlocked )
 		return;
 
-	edict_t *tank = m_pTank.Get();
+	edict_t *tank = m_hTank.Get();
 
 	if ( !tank || tank->free || !tank->pvPrivateData )
 	{
@@ -5175,9 +5318,9 @@ void CBasePlayer::ItemPostFrame()
 	{
 		CBasePlayerItem *item = ValidPlayerInventoryItem( m_pActiveItem );
 
-	if ( item && m_pTank == NULL && m_hVehicle == NULL && !item->m_bIsBeingRemoved )
+		if ( item && m_hTank == NULL && m_hVehicle == NULL && !item->m_bIsBeingRemoved )
 			item->ItemPostFrame( );
-}
+	}
 
 	PlayerUse();
 	ImpulseCommands();
@@ -5559,8 +5702,19 @@ void CBasePlayer :: UpdateClientData( void )
 //=========================================================
 bool CBasePlayer :: FBecomeProne ( CBaseEntity *pOther )
 {
+	if ( !pOther )
+		return false;
+
 	m_afPhysicsFlags |= PFLAG_ONBARNACLE;
-	return TRUE;
+	SetAnimation( PLAYER_BARNACLE_HIT );
+
+	if ( PM_HACK_GetBarnacleParalyze() )
+	{
+		BlockWeapons( pOther );
+		m_hBarnacle = pOther;
+	}
+
+	return true;
 }
 
 //=========================================================
@@ -5587,6 +5741,12 @@ void CBasePlayer :: BarnacleVictimReleased ( void )
 {
 	m_afPhysicsFlags &= ~PFLAG_ONBARNACLE;
 	m_bBarnacleMouth = false;
+
+	if ( m_hBarnacle != NULL )
+	{
+		UnblockWeapons( m_hBarnacle );
+		m_hBarnacle = NULL;
+	}
 }
 
 

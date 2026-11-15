@@ -35,10 +35,11 @@ TYPEDESCRIPTION	CSquadMonster::m_SaveData[] =
 	DEFINE_ARRAY( CSquadMonster, m_hSquadMember, FIELD_EHANDLE, MAX_SQUAD_MEMBERS - 1 ),
 
 	// DEFINE_FIELD( CSquadMonster, m_afSquadSlots, FIELD_INTEGER ), // these need to be reset after transitions!
-	DEFINE_FIELD( CSquadMonster, m_fEnemyEluded, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CSquadMonster, m_fEnemyEluded, FIELD_CHARACTER ),
 	DEFINE_FIELD( CSquadMonster, m_flLastEnemySightTime, FIELD_TIME ),
 
 	DEFINE_FIELD( CSquadMonster, m_iMySlot, FIELD_INTEGER ),
+	DEFINE_FIELD( CSquadMonster, m_iHealTime, FIELD_INTEGER ),
 
 
 };
@@ -416,6 +417,8 @@ int CSquadMonster :: CheckEnemy ( CBaseEntity *pEnemy )
 void CSquadMonster :: StartMonster( void )
 {
 	CBaseMonster :: StartMonster();
+
+	m_iHealTime = (int) gpGlobals->time;
 
 	if ( ( m_afCapability & bits_CAP_SQUAD ) && !InSquad() )
 	{

@@ -938,7 +938,7 @@ void OutputModuleScriptInfo(edict_t *player, CASModule *module)
 		printf(information.Data());
 }
 
-void CASPluginManager::ListPlugins(edict_s *player) const
+void CASPluginManager::ListPlugins(edict_t *player) const
 {
 	CString text;
 

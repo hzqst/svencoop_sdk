@@ -12,7 +12,7 @@
 #include "CASDocumentation.h"
 #include "ASPrintVariable.h"
 #include "server_support.h"
-#include "filesystem.h"
+#include "FileSystem.h"
 #include "CASLog.h"
 
 #include <angelscript.h>

@@ -237,7 +237,7 @@ void CAdvFuncVehicle::Use( CBaseEntity *activator, CBaseEntity *caller, USE_TYPE
 	{
 		CBasePlayer *player = static_cast<CBasePlayer *>( activator );
 
-		if ( !VehicleHandleEntity( player->m_hVehicle ) )
+		if ( !VehicleHandleEntity( player->m_hVehicle.m_Handle ) )
 			PlayerEnter( player );
 	}
 }
@@ -604,7 +604,7 @@ PlayerSlot *CAdvFuncVehicle::FindFreeSlot( CBasePlayer *player )
 
 void CAdvFuncVehicle::PlayerEnter( CBasePlayer *player )
 {
-	if ( !player || VehicleHandleEntity( player->m_hVehicle ) || VehicleHandleEntity( player->m_pTank ) )
+	if ( !player || VehicleHandleEntity( player->m_hVehicle.m_Handle ) || VehicleHandleEntity( player->m_hTank.m_Handle ) )
 		return;
 
 	PlayerSlot *slot = FindFreeSlot( player );
@@ -746,7 +746,7 @@ void CAdvFuncVehicle::PlayerUse( CBasePlayer *player, int useType, int buttons )
 
 	ALERT( at_console, "PlayerUse2!\n" );
 
-	if ( VehicleHandleEntity( player->m_hVehicle ) != this )
+	if ( VehicleHandleEntity( player->m_hVehicle.m_Handle ) != this )
 		return;
 
 	ALERT( at_console, "PlayerUse3!\n" );

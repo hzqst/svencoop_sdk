@@ -147,11 +147,8 @@
     <Filter Include="Header Files\external\cryptopp">
       <UniqueIdentifier>{77C5CC05-3EC6-53C0-BF23-993C6F2995E5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\external\fmodex">
+    <Filter Include="Header Files\public\fmodex">
       <UniqueIdentifier>{CB9C15E6-C6CC-50F6-AA9D-496B3B597673}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\external\fmodex\include">
-      <UniqueIdentifier>{A5B3D5BE-6B0A-5A23-BD16-93D720664895}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\game_shared">
       <UniqueIdentifier>{dfaa6b94-3821-41ff-a9c2-ef94fbb0d7d1}</UniqueIdentifier>
@@ -184,9 +181,6 @@
     </ClCompile>
     <ClCompile Include="..\..\cl_dll\Discord.cpp">
       <Filter>Source Files\cl_dll</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\cl_dll\client_fmod.cpp">
-      <Filter>Source Files\cl_dll\Sound</Filter>
     </ClCompile>
     <ClCompile Include="..\..\cl_dll\client_media.cpp">
       <Filter>Source Files\cl_dll\Media</Filter>
@@ -754,8 +748,26 @@
     <ClInclude Include="..\..\cl_dll\ClientDLL.h">
       <Filter>Header Files\cl_dll</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\external\fmodex\include\client_fmod.h">
-      <Filter>Header Files\external\fmodex\include</Filter>
+    <ClInclude Include="..\..\public\fmodex\fmod.h">
+      <Filter>Header Files\public\fmodex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\public\fmodex\fmod.hpp">
+      <Filter>Header Files\public\fmodex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\public\fmodex\fmod_codec.h">
+      <Filter>Header Files\public\fmodex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\public\fmodex\fmod_dsp.h">
+      <Filter>Header Files\public\fmodex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\public\fmodex\fmod_errors.h">
+      <Filter>Header Files\public\fmodex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\public\fmodex\fmod_memoryinfo.h">
+      <Filter>Header Files\public\fmodex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\public\fmodex\fmod_output.h">
+      <Filter>Header Files\public\fmodex</Filter>
     </ClInclude>
     <ClInclude Include="..\..\cl_dll\client_media.h">
       <Filter>Header Files\cl_dll\Media</Filter>

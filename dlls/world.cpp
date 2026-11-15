@@ -533,8 +533,8 @@ void CWorld::OnCreate( void )
 
 	double maxDistance = CVAR_GET_FLOAT( "sv_zmax" );
 
-	maxDistance = min( maxDistance, 454046.777344 );
-	CVAR_SET_FLOAT( "sv_zmax", max( 4096.0, maxDistance ) );
+	maxDistance = V_min( maxDistance, 454046.777344 );
+	CVAR_SET_FLOAT( "sv_zmax", V_max( 4096.0, maxDistance ) );
 
 	UTIL_CopyString( m_szSentenceFile, "sound/default_sentences.txt", sizeof( m_szSentenceFile ) );
 

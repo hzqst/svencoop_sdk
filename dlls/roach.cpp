@@ -475,5 +475,6 @@ void CRoach :: Look ( int iDistance )
 
 float CRoach::GetPointsForDamage( float flDamage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return 0.1f;
 }

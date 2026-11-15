@@ -38,6 +38,12 @@ private:
 	friend void RegisterSCScriptPersistence(CASDocumentation *documentation);
 	friend CASPersistence *Persistence_GetActivePersistence( void );
 	friend class CASConCommandSystem;
+	friend void as_listplugins_Callback( const CCommand &command );
+	friend void as_plugins_Callback( const CCommand &command );
+	friend void as_reloadplugin_Callback( const CCommand &command );
+	friend void as_reloadplugins_Callback( const CCommand &command );
+	friend void as_removeplugin_Callback( const CCommand &command );
+	friend void as_removeplugins_Callback( const CCommand &command );
 
 	CASPersistence		*m_pPersistence;
 	CASPluginManager	*m_pPluginManager;

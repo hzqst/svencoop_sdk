@@ -433,22 +433,22 @@ void CItemInventory::KeyValue( KeyValueData *data )
 	}
 	else if ( FStrEq( data->szKeyName, "collect_limit" ) )
 	{
-		m_iCollectLimit = max( atoi( data->szValue ), 0 );
+		m_iCollectLimit = V_max( atoi( data->szValue ), 0 );
 		data->fHandled = TRUE;
 	}
 	else if ( FStrEq( data->szKeyName, "activate_limit" ) )
 	{
-		m_iActivateLimit = max( atoi( data->szValue ), 0 );
+		m_iActivateLimit = V_max( atoi( data->szValue ), 0 );
 		data->fHandled = TRUE;
 	}
 	else if ( FStrEq( data->szKeyName, "item_group_required_num" ) )
 	{
-		m_iRequiresItemGroupNum = max( atoi( data->szValue ), 0 );
+		m_iRequiresItemGroupNum = V_max( atoi( data->szValue ), 0 );
 		data->fHandled = TRUE;
 	}
 	else if ( FStrEq( data->szKeyName, "item_group_canthave_num" ) )
 	{
-		m_iCantHaveItemGroupNum = max( atoi( data->szValue ), 0 );
+		m_iCantHaveItemGroupNum = V_max( atoi( data->szValue ), 0 );
 		data->fHandled = TRUE;
 	}
 	else if ( FStrEq( data->szKeyName, "carried_hidden" ) )

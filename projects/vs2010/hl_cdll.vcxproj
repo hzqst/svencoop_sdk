@@ -66,7 +66,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_ITERATOR_DEBUG_LEVEL=0;_CRT_SECURE_NO_WARNINGS;_DEBUG;_WINDOWS;CLIENT_DLL;CLIENT_WEAPONS;HL_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\..\dlls;..\..\cl_dll;..\..\public;..\..\common;..\..\pm_shared;..\..\engine;..\..\utils\vgui\include;..\..\game_shared;..\..\external;..\..\external\fmodex\include;..\..\external\discord-rpc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\dlls;..\..\cl_dll;..\..\public;..\..\common;..\..\pm_shared;..\..\engine;..\..\utils\vgui\include;..\..\game_shared;..\..\external;..\..\external\discord-rpc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <ExceptionHandling>Sync</ExceptionHandling>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
@@ -92,7 +92,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_ITERATOR_DEBUG_LEVEL=0;_CRT_SECURE_NO_WARNINGS;NDEBUG;_WINDOWS;CLIENT_DLL;CLIENT_WEAPONS;HL_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\..\dlls;..\..\cl_dll;..\..\public;..\..\common;..\..\pm_shared;..\..\engine;..\..\utils\vgui\include;..\..\game_shared;..\..\external;..\..\external\fmodex\include;..\..\external\discord-rpc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\dlls;..\..\cl_dll;..\..\public;..\..\common;..\..\pm_shared;..\..\engine;..\..\utils\vgui\include;..\..\game_shared;..\..\external;..\..\external\discord-rpc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <ExceptionHandling>Sync</ExceptionHandling>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
@@ -127,7 +127,6 @@
     <ClInclude Include="..\..\dlls\gauss.h" />
     <ClInclude Include="..\..\dlls\sporelauncher.h" />
     <ClInclude Include="..\..\cl_dll\Discord.h" />
-    <ClCompile Include="..\..\cl_dll\client_fmod.cpp" />
     <ClCompile Include="..\..\cl_dll\client_media.cpp" />
     <ClCompile Include="..\..\cl_dll\client_sound.cpp" />
     <ClCompile Include="..\..\cl_dll\client_sound_cache.cpp" />
@@ -163,7 +162,13 @@
     <ClCompile Include="..\..\dlls\CReplacementMap.cpp" />
     <ClCompile Include="..\..\cl_dll\vgui_MediaSelect.cpp" />
     <ClInclude Include="..\..\cl_dll\ClientDLL.h" />
-    <ClInclude Include="..\..\external\fmodex\include\client_fmod.h" />
+    <ClInclude Include="..\..\public\fmodex\fmod.h" />
+    <ClInclude Include="..\..\public\fmodex\fmod.hpp" />
+    <ClInclude Include="..\..\public\fmodex\fmod_codec.h" />
+    <ClInclude Include="..\..\public\fmodex\fmod_dsp.h" />
+    <ClInclude Include="..\..\public\fmodex\fmod_errors.h" />
+    <ClInclude Include="..\..\public\fmodex\fmod_memoryinfo.h" />
+    <ClInclude Include="..\..\public\fmodex\fmod_output.h" />
     <ClInclude Include="..\..\cl_dll\client_media.h" />
     <ClInclude Include="..\..\cl_dll\client_sound.h" />
     <ClInclude Include="..\..\cl_dll\particle_engine.h" />

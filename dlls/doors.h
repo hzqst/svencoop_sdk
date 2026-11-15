@@ -32,14 +32,6 @@
 #include "EntityHandle.h"
 #include "func_break.h"
 
-struct LockSoundsIndices
-{
-	BYTE	m_bLockedSound;
-	BYTE	m_bLockedSentence;
-	BYTE	m_bUnlockedSound;
-	BYTE	m_bUnlockedSentence;
-};
-
 bool HandleLockSounds( locksound_t &sounds, LockSoundsIndices &indices, KeyValueData *pkvd );
 void SetLockSounds( CBaseEntity *pEntity, locksound_t &sounds, LockSoundsIndices &indices );
 const char *DoorMovingSound( int iSound );
@@ -50,6 +42,7 @@ const char *UnlockedSentenceSound( int iSound );
 class CStartStopVars
 {
 public:
+	bool KeyValue( KeyValueData *pkvd );
 	void TriggerStartedTargets( CBaseEntity *owner, EntityHandle<CBaseEntity> &activator );
 	void TriggerStoppedTargets( CBaseEntity *owner, EntityHandle<CBaseEntity> &activator );
 

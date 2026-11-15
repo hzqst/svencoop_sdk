@@ -285,7 +285,7 @@ BOOL COtis::CheckRangeAttack1( float dot, float distance )
 
 	TraceResult trace;
 	Vector origin = pev->origin + Vector( 0, 0, 55 );
-	CBaseEntity *enemy = OtisHandleEntity( m_hEnemy );
+	CBaseEntity *enemy = OtisHandleEntity( m_hEnemy.m_Handle );
 	Vector target = ( enemy->BodyTarget( origin ) - enemy->Center() ) + m_vecEnemyLKP;
 
 	UTIL_TraceLine( origin, target, dont_ignore_monsters, edict(), &trace );
@@ -328,7 +328,7 @@ void COtis::DeclineFollowing( void )
 
 void COtis::AlertSound( void )
 {
-	if ( OtisHandleEntity( m_hEnemy ) && FOkToSpeak() )
+	if ( OtisHandleEntity( m_hEnemy.m_Handle ) && FOkToSpeak() )
 		PlaySentence( "OT_ATTACK", RANDOM_FLOAT( 2.8f, 3.2f ), VOL_NORM, ATTN_NORM );
 }
 
@@ -405,7 +405,7 @@ void COtis::RunTask( Task_t *task )
 
 	if ( task->iTask == TASK_RANGE_ATTACK1 )
 	{
-		CBaseEntity *enemy = OtisHandleEntity( m_hEnemy );
+		CBaseEntity *enemy = OtisHandleEntity( m_hEnemy.m_Handle );
 
 		if ( enemy && enemy->IsPlayer() )
 			pev->framerate = 1.5f;
@@ -471,7 +471,7 @@ int COtis::TakeDamage( entvars_t *inflictor, entvars_t *attacker, float damage, 
 	if ( m_MonsterState == MONSTERSTATE_PRONE || !( attacker->flags & FL_CLIENT ) )
 		return result;
 
-	CBaseEntity *enemy = OtisHandleEntity( m_hEnemy );
+	CBaseEntity *enemy = OtisHandleEntity( m_hEnemy.m_Handle );
 
 	if ( !enemy )
 	{
@@ -536,6 +536,7 @@ void COtis::Killed( entvars_t *attacker, int gib )
 
 float COtis::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return ( pev->max_health / sk_otis_health.value * 4.0f ) * ( damage / pev->max_health );
 }
 
@@ -546,7 +547,7 @@ Schedule_t *COtis::GetScheduleOfType( int type )
 	switch ( type )
 	{
 		case SCHED_ARM_WEAPON:
-			if ( OtisHandleEntity( m_hEnemy ) )
+			if ( OtisHandleEntity( m_hEnemy.m_Handle ) )
 				return slOtisEnemyDraw;
 			break;
 
@@ -611,9 +612,9 @@ Schedule_t *COtis::GetSchedule( void )
 			if ( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 				return GetScheduleOfType( SCHED_SMALL_FLINCH );
 
-			if ( ( !OtisHandleEntity( m_hEnemy ) || !HasConditions( bits_COND_SEE_ENEMY ) ) && IsPlayerFollowing() )
+			if ( ( !OtisHandleEntity( m_hEnemy.m_Handle ) || !HasConditions( bits_COND_SEE_ENEMY ) ) && IsPlayerFollowing() )
 			{
-				if ( !OtisHandleEntity( m_hTargetEnt )->IsAlive() )
+				if ( !OtisHandleEntity( m_hTargetEnt.m_Handle )->IsAlive() )
 				{
 					StopPlayerFollowing( false );
 					return CBaseMonster::GetSchedule();

@@ -74,7 +74,7 @@ public:
 	int		m_density;
 	int		m_frequency;
 	int		m_bubbleModel;
-	int		m_state;
+	bool    m_state;
 };
 
 LINK_ENTITY_TO_CLASS( env_bubbles, CBubbling );
@@ -83,7 +83,7 @@ TYPEDESCRIPTION	CBubbling::m_SaveData[] =
 {
 	DEFINE_FIELD( CBubbling, m_density, FIELD_INTEGER ),
 	DEFINE_FIELD( CBubbling, m_frequency, FIELD_INTEGER ),
-	DEFINE_FIELD( CBubbling, m_state, FIELD_INTEGER ),
+	DEFINE_FIELD( CBubbling, m_state, FIELD_CHARACTER ),
 	// Let spawn restore this!
 	//	DEFINE_FIELD( CBubbling, m_bubbleModel, FIELD_INTEGER ),
 };
@@ -485,7 +485,7 @@ public:
 
 	void	BeamUpdateVars( void );
 
-	int		m_active;
+	bool    m_active;
 	int		m_iszStartEntity;
 	int		m_iszEndEntity;
 	EHANDLE	m_hStrikeActivator;
@@ -527,7 +527,7 @@ void CTripBeam::Spawn( void )
 
 TYPEDESCRIPTION	CLightning::m_SaveData[] = 
 {
-	DEFINE_FIELD( CLightning, m_active, FIELD_INTEGER ),
+	DEFINE_FIELD( CLightning, m_active, FIELD_CHARACTER ),
 	DEFINE_FIELD( CLightning, m_iszStartEntity, FIELD_STRING ),
 	DEFINE_FIELD( CLightning, m_iszEndEntity, FIELD_STRING ),
 	DEFINE_FIELD( CLightning, m_life, FIELD_FLOAT ),
@@ -1055,12 +1055,9 @@ LINK_ENTITY_TO_CLASS( env_laser, CLaser );
 
 TYPEDESCRIPTION	CLaser::m_SaveData[] = 
 {
-	DEFINE_FIELD( CLaser, m_pSprite, FIELD_CLASSPTR ),
+	DEFINE_FIELD( CLaser, m_hSprite, FIELD_EHANDLE ),
 	DEFINE_FIELD( CLaser, m_iszSpriteName, FIELD_STRING ),
 	DEFINE_FIELD( CLaser, m_firePosition, FIELD_POSITION_VECTOR ),
-	DEFINE_FIELD( CLaser, m_iFrameStart, FIELD_INTEGER ),
-	DEFINE_FIELD( CLaser, m_hActivator, FIELD_EHANDLE ),
-	DEFINE_FIELD( CLaser, m_hCaller, FIELD_EHANDLE ),
 };
 
 IMPLEMENT_SAVERESTORE( CLaser, CBeam );
@@ -1081,13 +1078,13 @@ void CLaser::Spawn( void )
 
 	PointsInit( pev->origin, pev->origin );
 
-	if ( !m_pSprite && m_iszSpriteName )
-		m_pSprite = CSprite::SpriteCreate( STRING(m_iszSpriteName), pev->origin, TRUE );
+	if ( !m_hSprite && m_iszSpriteName )
+		m_hSprite = CSprite::SpriteCreate( STRING(m_iszSpriteName), pev->origin, TRUE );
 	else
-		m_pSprite = NULL;
+		m_hSprite = NULL;
 
-	if ( m_pSprite )
-		m_pSprite->SetTransparency( kRenderGlow, pev->rendercolor.x, pev->rendercolor.y, pev->rendercolor.z, pev->renderamt, pev->renderfx );
+	if ( m_hSprite )
+		m_hSprite->SetTransparency( kRenderGlow, pev->rendercolor.x, pev->rendercolor.y, pev->rendercolor.z, pev->renderamt, pev->renderfx );
 
 	if ( pev->targetname && !(pev->spawnflags & SF_BEAM_STARTON) )
 		TurnOff();
@@ -1097,9 +1094,10 @@ void CLaser::Spawn( void )
 
 void CLaser::Precache( void )
 {
-	pev->modelindex = PRECACHE_MODEL( (char *)STRING(pev->model) );
+	pev->modelindex = UTIL_PrecacheModel( this, STRING( pev->model ) );
+
 	if ( m_iszSpriteName )
-		PRECACHE_MODEL( (char *)STRING(m_iszSpriteName) );
+		UTIL_PrecacheModel( this, STRING( m_iszSpriteName ) );
 }
 
 
@@ -1162,16 +1160,19 @@ void CLaser::TurnOff( void )
 {
 	pev->effects |= EF_NODRAW;
 	pev->nextthink = 0;
-	if ( m_pSprite )
-		m_pSprite->TurnOff();
+
+	if ( m_hSprite )
+		m_hSprite->TurnOff();
 }
 
 
 void CLaser::TurnOn( void )
 {
 	pev->effects &= ~EF_NODRAW;
-	if ( m_pSprite )
-		m_pSprite->TurnOn();
+
+	if ( m_hSprite )
+		m_hSprite->TurnOn();
+
 	pev->dmgtime = gpGlobals->time;
 	pev->nextthink = gpGlobals->time;
 }
@@ -1187,20 +1188,37 @@ void CLaser::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useTyp
 	m_hActivator = pActivator;
 	m_hCaller = pCaller;
 
-	if ( useType == USE_KILL )
+	switch ( useType )
 	{
+	case USE_OFF:
+		TurnOff();
+		break;
+
+	case USE_ON:
+		TurnOn();
+		break;
+
+	case USE_SET:
+		if ( value != 0 )
+			TurnOn();
+		else
+			TurnOff();
+		break;
+
+	case USE_TOGGLE:
+		if ( active )
+			TurnOff();
+		else
+			TurnOn();
+		break;
+
+	case USE_KILL:
 		TurnOff();
 		UTIL_Remove( this );
-		return;
-	}
+		break;
 
-	if ( active )
-	{
-		TurnOff();
-	}
-	else
-	{
-		TurnOn();
+	default:
+		break;
 	}
 }
 
@@ -1208,8 +1226,9 @@ void CLaser::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useTyp
 void CLaser::FireAtPoint( TraceResult &tr )
 {
 	SetEndPos( tr.vecEndPos );
-	if ( m_pSprite )
-		UTIL_SetOrigin( m_pSprite->pev, tr.vecEndPos );
+
+	if ( m_hSprite )
+		UTIL_SetOrigin( m_hSprite->pev, tr.vecEndPos );
 
 	BeamDamage( &tr );
 	DoSparks( GetStartPos(), tr.vecEndPos );
@@ -1219,9 +1238,13 @@ void CLaser::StrikeThink( void )
 {
 	CBaseEntity *pEnd = NULL;
 
-	if ( FStrEq( STRING( pev->message ), "!activator" ) && m_hActivator != NULL )
+	if ( FStrEq( STRING( pev->message ), "!activator" ) && m_hActivator != NULL
+	     && m_hActivator->pev && m_hActivator->edict() && !m_hActivator->edict()->free
+	     && ENTINDEX( m_hActivator->edict() ) != 0 )
 		pEnd = m_hActivator;
-	else if ( FStrEq( STRING( pev->message ), "!caller" ) && m_hCaller != NULL )
+	else if ( FStrEq( STRING( pev->message ), "!caller" ) && m_hCaller != NULL
+	          && m_hCaller->pev && m_hCaller->edict() && !m_hCaller->edict()->free
+	          && ENTINDEX( m_hCaller->edict() ) != 0 )
 		pEnd = m_hCaller;
 	else
 		pEnd = RandomTargetname( STRING(pev->message) );
@@ -1242,6 +1265,7 @@ class CGlow : public CPointEntity
 {
 public:
 	void Spawn( void );
+	void Precache( void );
 	void Think( void );
 	void Animate( float frames );
 	void KeyValue( KeyValueData *pkvd );
@@ -1259,8 +1283,7 @@ LINK_ENTITY_TO_CLASS( env_glow, CGlow );
 TYPEDESCRIPTION	CGlow::m_SaveData[] = 
 {
 	DEFINE_FIELD( CGlow, m_lastTime, FIELD_TIME ),
-	DEFINE_FIELD( CGlow, m_maxFrame, FIELD_INTEGER ),
-	DEFINE_FIELD( CGlow, m_iFrameStart, FIELD_INTEGER ),
+	DEFINE_FIELD( CGlow, m_maxFrame, FIELD_FLOAT ),
 };
 
 IMPLEMENT_SAVERESTORE( CGlow, CPointEntity );
@@ -1276,6 +1299,11 @@ void CGlow::KeyValue( KeyValueData *pkvd )
 		CPointEntity::KeyValue( pkvd );
 }
 
+void CGlow::Precache( void )
+{
+	UTIL_PrecacheModel( this, STRING( pev->model ) );
+}
+
 void CGlow::Spawn( void )
 {
 	pev->solid			= SOLID_NOT;
@@ -1283,7 +1311,7 @@ void CGlow::Spawn( void )
 	pev->effects		= 0;
 	pev->frame			= 0;
 
-	PRECACHE_MODEL( (char *)STRING(pev->model) );
+	Precache();
 	SET_MODEL( ENT(pev), STRING(pev->model) );
 
 	m_maxFrame = MODEL_FRAMES( pev->modelindex ) - 1;
@@ -1295,6 +1323,7 @@ void CGlow::Spawn( void )
 
 	if ( m_maxFrame > 0 && pev->framerate != 0 )
 	{
+		SetThink( &CGlow::Think );
 		pev->nextthink	= gpGlobals->time;
 		m_lastTime = gpGlobals->time;
 	}

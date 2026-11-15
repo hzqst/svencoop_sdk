@@ -272,6 +272,7 @@ int CHWGrunt::ISoundMask( void )
 
 float CHWGrunt::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float points = pev->max_health / sk_hwgrunt_health.value;
 	float fraction = damage / pev->max_health;
 
@@ -412,7 +413,7 @@ void CHWGrunt::SetArmedWeapon( int weapon )
 void CHWGrunt::SetFiringState( HWGRUNT::ShootingStates state )
 {
 	m_ShootingState = state;
-	m_flThinkInterval = state == HWGRUNT::SHOOTING_FIRING || state == HWGRUNT::SHOOTING_SUPPRESSING ? 0.0f : 0.1f;
+	m_flThinkDelay = state == HWGRUNT::SHOOTING_FIRING || state == HWGRUNT::SHOOTING_SUPPRESSING ? 0.0f : 0.1f;
 }
 
 void CHWGrunt::CheckAmmo( void )
@@ -625,23 +626,23 @@ bool CHWGrunt::CheckMinigunAttack( CBaseEntity *enemy )
 
 bool CHWGrunt::CheckSidearmAttackFrom( const Vector &source )
 {
-	CBaseEntity *enemy = HWGruntEntity( m_hEnemy );
+	CBaseEntity *enemy = HWGruntEntity( m_hEnemy.m_Handle );
 	Vector target = enemy->BodyTarget( source );
 	TraceResult trace;
 
 	UTIL_TraceLine( source, target, ignore_monsters, ignore_glass, edict(), &trace );
-	return trace.flFraction == 1.0f || trace.pHit == HWGruntEntity( m_hEnemy )->edict();
+	return trace.flFraction == 1.0f || trace.pHit == HWGruntEntity( m_hEnemy.m_Handle )->edict();
 }
 
 BOOL CHWGrunt::CheckRangeAttack1( float dot, float distance )
 {
-	if ( !HWGruntEntity( m_hEnemy ) )
+	if ( !HWGruntEntity( m_hEnemy.m_Handle ) )
 		return FALSE;
 
 	if ( m_iArmedWeapon == HWGRUNT_ARMED_MINIGUN )
 	{
 		if ( pev->waterlevel != 3 && m_flNextShot <= gpGlobals->time && distance <= 2048 && NoFriendlyFire() )
-			return CheckMinigunAttack( HWGruntEntity( m_hEnemy ) );
+			return CheckMinigunAttack( HWGruntEntity( m_hEnemy.m_Handle ) );
 
 		return FALSE;
 	}
@@ -823,7 +824,7 @@ Schedule_t *CHWGrunt::GetSchedule( void )
 				if ( !HasConditions( bits_COND_ENEMY_OCCLUDED ) || !weapon )
 					return CSquadMonster::GetSchedule();
 
-				if ( HWGruntEntity( m_hEnemy ) && ( pev->origin - m_vecEnemyLKP ).Length() <= ( pev->origin - weapon->Center() ).Length() )
+				if ( HWGruntEntity( m_hEnemy.m_Handle ) && ( pev->origin - m_vecEnemyLKP ).Length() <= ( pev->origin - weapon->Center() ).Length() )
 					return CSquadMonster::GetSchedule();
 			}
 
@@ -994,7 +995,7 @@ void CHWGrunt::RunTask( Task_t *task )
 
 	if ( task->iTask != TASK_HWGRUNT_PICKUP_MINIGUN )
 	{
-		m_flThinkInterval = 0.1f;
+		m_flThinkDelay = 0.1f;
 		CSquadMonster::RunTask( task );
 		return;
 	}
@@ -1033,9 +1034,9 @@ void CHWGrunt::UpdateGunAngles( const Vector &target )
 
 void CHWGrunt::SetShootEnemy( CBaseEntity *enemy )
 {
-	PushEnemy( HWGruntEntity( m_hEnemy ), m_vecSuppressionTarget );
+	PushEnemy( HWGruntEntity( m_hEnemy.m_Handle ), m_vecSuppressionTarget );
 	m_hEnemy = enemy;
-	m_vecSuppressionTarget = HWGruntEntity( m_hEnemy )->BodyTarget( pev->origin );
+	m_vecSuppressionTarget = HWGruntEntity( m_hEnemy.m_Handle )->BodyTarget( pev->origin );
 	m_vecEnemyLKP = m_vecSuppressionTarget;
 }
 
@@ -1055,7 +1056,7 @@ bool CHWGrunt::UpdateShootTarget( bool grounded, CBaseEntity *&enemy, bool canFi
 
 		if ( enemy )
 		{
-			if ( enemy != HWGruntEntity( m_hEnemy ) )
+			if ( enemy != HWGruntEntity( m_hEnemy.m_Handle ) )
 				SetShootEnemy( enemy );
 
 			return true;
@@ -1070,7 +1071,7 @@ bool CHWGrunt::UpdateShootTarget( bool grounded, CBaseEntity *&enemy, bool canFi
 		SpeakSentence();
 	}
 
-	CBaseEntity *currentEnemy = HWGruntEntity( m_hEnemy );
+	CBaseEntity *currentEnemy = HWGruntEntity( m_hEnemy.m_Handle );
 
 	if ( currentEnemy && !currentEnemy->IsBSPModel() && grounded && canFire )
 	{
@@ -1133,7 +1134,7 @@ void CHWGrunt::ExecuteShootTask( void )
 		case HWGRUNT::SHOOTING_SPINUP:
 			if ( HasConditions( bits_COND_SEE_ENEMY ) )
 			{
-				m_vecEnemyLKP = HWGruntEntity( m_hEnemy )->BodyTarget( pev->origin );
+				m_vecEnemyLKP = HWGruntEntity( m_hEnemy.m_Handle )->BodyTarget( pev->origin );
 				m_vecSuppressionTarget = m_vecEnemyLKP;
 				m_flLastEnemySightTime = gpGlobals->time;
 				MakeIdealYaw( m_vecSuppressionTarget );
@@ -1159,7 +1160,7 @@ void CHWGrunt::ExecuteShootTask( void )
 
 				if ( !newEnemy )
 				{
-					CBaseEntity *enemy = HWGruntEntity( m_hEnemy );
+					CBaseEntity *enemy = HWGruntEntity( m_hEnemy.m_Handle );
 
 					if ( !enemy || enemy->IsBSPModel() || !grounded )
 					{
@@ -1169,7 +1170,7 @@ void CHWGrunt::ExecuteShootTask( void )
 						return;
 					}
 				}
-				else if ( newEnemy != HWGruntEntity( m_hEnemy ) )
+				else if ( newEnemy != HWGruntEntity( m_hEnemy.m_Handle ) )
 				{
 					SetShootEnemy( newEnemy );
 					m_iSentence = 1;
@@ -1180,8 +1181,8 @@ void CHWGrunt::ExecuteShootTask( void )
 			}
 
 			bool canFire = NoFriendlyFire();
-			bool canAttack = CheckMinigunAttack( HWGruntEntity( m_hEnemy ) );
-			CBaseEntity *enemy = HWGruntEntity( m_hEnemy );
+			bool canAttack = CheckMinigunAttack( HWGruntEntity( m_hEnemy.m_Handle ) );
+			CBaseEntity *enemy = HWGruntEntity( m_hEnemy.m_Handle );
 
 			if ( !enemy || enemy->IsBSPModel() || !canFire || !grounded )
 			{
@@ -1242,17 +1243,17 @@ void CHWGrunt::ExecuteShootTask( void )
 
 				if ( newEnemy && grounded )
 				{
-					if ( newEnemy == HWGruntEntity( m_hEnemy ) )
+					if ( newEnemy == HWGruntEntity( m_hEnemy.m_Handle ) )
 						m_iSentence = 6;
 					else
 					{
-						PushEnemy( HWGruntEntity( m_hEnemy ), m_vecSuppressionTarget );
+						PushEnemy( HWGruntEntity( m_hEnemy.m_Handle ), m_vecSuppressionTarget );
 						m_iSentence = 1;
 						m_hEnemy = newEnemy;
 					}
 
 					SpeakSentence();
-					m_vecEnemyLKP = HWGruntEntity( m_hEnemy )->BodyTarget( pev->origin );
+					m_vecEnemyLKP = HWGruntEntity( m_hEnemy.m_Handle )->BodyTarget( pev->origin );
 					m_vecSuppressionTarget = m_vecEnemyLKP;
 					SetFiringState( HWGRUNT::SHOOTING_FIRING );
 					return;
@@ -1261,13 +1262,13 @@ void CHWGrunt::ExecuteShootTask( void )
 
 			if ( HasConditions( bits_COND_SEE_ENEMY ) )
 			{
-				CBaseEntity *enemy = HWGruntEntity( m_hEnemy );
+				CBaseEntity *enemy = HWGruntEntity( m_hEnemy.m_Handle );
 
 				if ( !newEnemy && enemy && CheckMinigunAttack( enemy ) )
 				{
 					m_iSentence = 6;
 					SpeakSentence();
-					m_vecEnemyLKP = HWGruntEntity( m_hEnemy )->BodyTarget( pev->origin );
+					m_vecEnemyLKP = HWGruntEntity( m_hEnemy.m_Handle )->BodyTarget( pev->origin );
 					m_vecSuppressionTarget = m_vecEnemyLKP;
 					SetFiringState( HWGRUNT::SHOOTING_FIRING );
 					return;
@@ -1303,23 +1304,23 @@ void CHWGrunt::ExecuteShootTask( void )
 
 				if ( newEnemy )
 				{
-					if ( newEnemy != HWGruntEntity( m_hEnemy ) )
+					if ( newEnemy != HWGruntEntity( m_hEnemy.m_Handle ) )
 					{
 						SetShootEnemy( newEnemy );
 						m_iSentence = 1;
 						SpeakSentence();
 					}
 
-					if ( CheckMinigunAttack( HWGruntEntity( m_hEnemy ) ) )
+					if ( CheckMinigunAttack( HWGruntEntity( m_hEnemy.m_Handle ) ) )
 						TaskComplete();
 				}
 
 				m_flNextLookTime = gpGlobals->time + 2;
 			}
 
-			if ( HWGruntEntity( m_hEnemy ) && HasConditions( bits_COND_SEE_ENEMY ) )
+			if ( HWGruntEntity( m_hEnemy.m_Handle ) && HasConditions( bits_COND_SEE_ENEMY ) )
 			{
-				m_vecEnemyLKP = HWGruntEntity( m_hEnemy )->BodyTarget( pev->origin );
+				m_vecEnemyLKP = HWGruntEntity( m_hEnemy.m_Handle )->BodyTarget( pev->origin );
 				m_vecSuppressionTarget = m_vecEnemyLKP;
 				m_flLastEnemySightTime = gpGlobals->time;
 				MakeIdealYaw( m_vecSuppressionTarget );
@@ -1334,14 +1335,14 @@ void CHWGrunt::ExecuteShootTask( void )
 
 void CHWGrunt::Shoot( Vector target )
 {
-	if ( !HWGruntEntity( m_hEnemy ) )
+	if ( !HWGruntEntity( m_hEnemy.m_Handle ) )
 		return;
 
 	Vector angles;
 
 	if ( target == g_vecZero )
 	{
-		angles = UTIL_VecToAngles( HWGruntEntity( m_hEnemy )->Center() - Center() );
+		angles = UTIL_VecToAngles( HWGruntEntity( m_hEnemy.m_Handle )->Center() - Center() );
 		angles.x = -angles.x;
 	}
 	else
@@ -1364,10 +1365,10 @@ void CHWGrunt::Shoot( Vector target )
 
 	if ( target == g_vecZero )
 	{
-		if ( ( source - HWGruntEntity( m_hEnemy )->Center() ).Length() >= 96 )
-			target = HWGruntEntity( m_hEnemy )->BodyTarget( source );
+		if ( ( source - HWGruntEntity( m_hEnemy.m_Handle )->Center() ).Length() >= 96 )
+			target = HWGruntEntity( m_hEnemy.m_Handle )->BodyTarget( source );
 		else
-			target = HWGruntEntity( m_hEnemy )->Center();
+			target = HWGruntEntity( m_hEnemy.m_Handle )->Center();
 	}
 
 	Vector direction = ( target - source ).Normalize();

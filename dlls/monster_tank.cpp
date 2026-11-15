@@ -89,7 +89,7 @@ CFuncTank *CBaseMonster::FindTank( void )
 		if ( tank->pev->spawnflags & SF_TANK_ACTIVE )
 			continue;
 
-		CBaseEntity *enemy = MonsterTankHandle( m_hEnemy );
+		CBaseEntity *enemy = MonsterTankHandle( m_hEnemy.m_Handle );
 
 		if ( !enemy )
 			return tank;

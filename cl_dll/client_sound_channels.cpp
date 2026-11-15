@@ -107,7 +107,7 @@ float CClient_SoundEngine::CalculateMouthOpen(int entityIndex)
 			if (count > 0)
 				total /= count;
 
-			target = min(1.0f, total);
+			target = V_min(1.0f, total);
 			update = true;
 		}
 	}

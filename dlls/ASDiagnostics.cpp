@@ -5,7 +5,7 @@
 #include "CASLog.h"
 #include "CASModule.h"
 #include "CASServerManager.h"
-#include "filesystem.h"
+#include "FileSystem.h"
 #include "server_support.h"
 #include <angelscript.h>
 #include "../external/angelscript/sdk/add_on/scripthelper/scripthelper.h"

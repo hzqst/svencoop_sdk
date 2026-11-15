@@ -104,9 +104,9 @@ void CPortal::KeyValue( KeyValueData *data )
 	else if ( FStrEq( data->szKeyName, "fps" ) )
 		m_iFPS = atoi( data->szValue );
 	else if ( FStrEq( data->szKeyName, "mindist" ) )
-		m_iMinDistance = max( atoi( data->szValue ), 0 );
+		m_iMinDistance = V_max( atoi( data->szValue ), 0 );
 	else if ( FStrEq( data->szKeyName, "maxdist" ) )
-		m_iMaxDistance = max( atoi( data->szValue ), 0 );
+		m_iMaxDistance = V_max( atoi( data->szValue ), 0 );
 	else
 	{
 		CBaseEntity::KeyValue( data );

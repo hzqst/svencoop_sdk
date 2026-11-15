@@ -94,7 +94,12 @@ extern cvar_t sk_hgrunt_health;
 class CHGruntOp4Repel : public CBaseMonster
 {
 public:
-	float GetPointsForDamage( float damage ) { return pev->max_health / sk_hgrunt_health.value * 4 * ( damage / pev->max_health ); }
+	float GetPointsForDamage( float damage )
+	{
+		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+		return pev->max_health / sk_hgrunt_health.value * 5 * ( damage / pev->max_health );
+	}
+
 	void Spawn( void );
 	void Precache( void );
 	void EXPORT RepelUse( CBaseEntity *activator, CBaseEntity *caller, USE_TYPE useType, float value );
@@ -191,7 +196,12 @@ void CHGruntOp4MedicRepel::KeyValue( KeyValueData *pkvd )
 class CHGruntOp4TorchRepel : public CBaseMonster
 {
 public:
-	float GetPointsForDamage( float damage ) { return pev->max_health / sk_hgrunt_health.value * 4 * ( damage / pev->max_health ); }
+	float GetPointsForDamage( float damage )
+	{
+		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+		return pev->max_health / sk_hgrunt_health.value * 5 * ( damage / pev->max_health );
+	}
+
 	void Spawn( void );
 	void Precache( void );
 	void EXPORT RepelUse( CBaseEntity *activator, CBaseEntity *caller, USE_TYPE useType, float value );

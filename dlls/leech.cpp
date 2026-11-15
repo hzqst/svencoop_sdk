@@ -128,7 +128,7 @@ public:
 private:
 	// UNDONE: Remove unused boid vars, do group behavior
 	float	m_flTurning;// is this boid turning?
-	BOOL	m_fPathBlocked;// TRUE if there is an obstacle ahead
+	bool	m_fPathBlocked;// TRUE if there is an obstacle ahead
 	float	m_flAccelerate;
 	float	m_obstacle;
 	float	m_top;
@@ -153,7 +153,7 @@ LINK_ENTITY_TO_CLASS( monster_leech, CLeech );
 TYPEDESCRIPTION	CLeech::m_SaveData[] = 
 {
 	DEFINE_FIELD( CLeech, m_flTurning, FIELD_FLOAT ),
-	DEFINE_FIELD( CLeech, m_fPathBlocked, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CLeech, m_fPathBlocked, FIELD_CHARACTER ),
 	DEFINE_FIELD( CLeech, m_flAccelerate, FIELD_FLOAT ),
 	DEFINE_FIELD( CLeech, m_obstacle, FIELD_FLOAT ),
 	DEFINE_FIELD( CLeech, m_top, FIELD_FLOAT ),
@@ -737,6 +737,7 @@ void CLeech::Killed(entvars_t *pevAttacker, int iGib)
 
 float CLeech::GetPointsForDamage( float flDamage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float healthScale = pev->max_health / sk_leech_health.value;
 	float damageScale = flDamage / pev->max_health;
 

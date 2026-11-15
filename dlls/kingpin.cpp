@@ -216,6 +216,21 @@ enum
 	TASK_KINGPIN_PLASMA_BALL
 };
 
+Task_t tlKingpinSimpleMoveToLocation[] = {
+	{ TASK_SET_FAIL_SCHEDULE, SCHED_CHASE_ENEMY },
+	{ TASK_RUN_PATH, 0 },
+	{ TASK_WAIT_FOR_MOVEMENT, 0 }
+};
+Schedule_t slKingpinSimpleMoveToLocation[] = {
+	{
+		tlKingpinSimpleMoveToLocation,
+		ARRAYSIZE( tlKingpinSimpleMoveToLocation ),
+		bits_COND_TASK_FAILED,
+		0,
+		"KingpinSimpleMoveToLocation"
+	}
+};
+
 Task_t tlKingpinTeleport[] = {
 	{ TASK_KINGPIN_CHECK_TELEPORT, 0 },
 	{ TASK_STOP_MOVING, 0 },
@@ -330,6 +345,7 @@ void CKingpin::Precache( void )
 
 float CKingpin::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return ( pev->max_health / sk_kingpin_health.value ) * 3.0f * ( damage / pev->max_health );
 }
 
@@ -700,9 +716,9 @@ void CKingpin::DeflectStuff( void )
 		return;
 	}
 
-	Vector force = offset / distance * gpGlobals->frametime * 2000000.0f / max( distance, 10.0f );
+	Vector force = offset / distance * gpGlobals->frametime * 2000000.0f / V_max( distance, 10.0f );
 
-	force.z = max( force.z, 50.0f );
+	force.z = V_max( force.z, 50.0f );
 	target->pev->velocity = target->pev->velocity + force;
 	target->pev->flags &= ~FL_ONGROUND;
 
@@ -1285,7 +1301,7 @@ Vector KingpinBlastDirection( Vector direction )
 	}
 	else if ( vertical > 0.5f )
 	{
-		direction.z = max( direction.x, direction.y );
+		direction.z = V_max( direction.x, direction.y );
 		direction = direction.Normalize();
 	}
 

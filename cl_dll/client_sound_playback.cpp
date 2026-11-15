@@ -309,14 +309,14 @@ void CClient_SoundEngine::Play2DSound(int index, float volume)
 	PlayFMODSound(0, 0, origin, CHAN_AUTO, LookupSoundByIndex(index), volume, 0, 0, PITCH_NORM, -1, 0);
 }
 
-void CClient_SoundEngine::Play2DSound(char *sample, float volume)
+void CClient_SoundEngine::Play2DSound(const char *sample, float volume)
 {
 	float origin[3] = { 0, 0, 0 };
 
 	PlayFMODSound(0, 0, origin, CHAN_AUTO, sample, volume, 0, 0, PITCH_NORM, -1, 0);
 }
 
-void CL_Play2DSound(char *szSound, float vol)
+void CL_Play2DSound(const char *szSound, float vol)
 {
 	CClient_SoundEngine::GetSoundEngine()->Play2DSound(szSound, vol);
 }

@@ -209,7 +209,7 @@ CBaseEntity::CBaseEntity()
 	m_iszOnDestroy = 0;
 	m_pUserData = NULL;
 	m_pSoundReplacementMap = NULL;
-	m_hAssignedMedic = NULL;
+	m_hHealer = NULL;
 	m_fCustomModel = false;
 	m_uiEntityFlags = 0;
 	m_vecLastOrigin = Vector( 0, 0, 0 );
@@ -253,7 +253,7 @@ bool CBaseEntity::SetupModel( void )
 	if ( !m_fCustomModel )
 		return false;
 
-	UTIL_SetModel( this, STRING( pev->model ) );
+	SET_MODEL( ENT( pev ), STRING( pev->model ) );
 
 	if ( !stricmp( STRING( pev->model ), "models/w_svencoop_pickup.mdl" ) )
 		return false;
@@ -1190,7 +1190,7 @@ CBaseEntity *CBaseEntity::GetNextTarget( void )
 // Global Savedata for Delay
 TYPEDESCRIPTION	CBaseEntity::m_SaveData[] = 
 {
-	DEFINE_FIELD( CBaseEntity, m_pGoalEnt, FIELD_CLASSPTR ),
+	DEFINE_FIELD( CBaseEntity, m_hGoalEnt, FIELD_EHANDLE ),
 
 	DEFINE_FIELD( CBaseEntity, m_pfnThink, FIELD_FUNCTION ),		// UNDONE: Build table of these!!!
 	DEFINE_FIELD( CBaseEntity, m_pfnTouch, FIELD_FUNCTION ),

@@ -2,7 +2,7 @@
 #define CKEYVALUESWRITER_H
 
 #include "CKeyvaluesLexer.h"
-#include "filesystem.h"
+#include "FileSystem.h"
 
 class CEscapeSequences;
 class CCommand;

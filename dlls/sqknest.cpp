@@ -119,6 +119,7 @@ int CSqkNest::ObjectCaps( void )
 
 float CSqkNest::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return ( damage / pev->max_health ) * ( pev->max_health / sk_sqknest_health.value );
 }
 

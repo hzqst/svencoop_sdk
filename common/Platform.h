@@ -42,6 +42,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <stdarg.h>
 #endif
 
 #define ARRAYSIZE(p)		(sizeof(p)/sizeof(p[0]))

@@ -129,7 +129,7 @@ void CMedkit::WeaponIdle( void )
 
 void CMedkit::PrimaryAttack( void )
 {
-	float healAmount = max( 0.0f, sk_plr_HpMedic.value );
+	float healAmount = V_max( 0.0f, sk_plr_HpMedic.value );
 
 	if ( healAmount <= 0.0f )
 		return;
@@ -181,8 +181,8 @@ void CMedkit::PrimaryAttack( void )
 		|| !( target->pev->max_health > target->pev->health || provoked ) )
 		return;
 
-	healAmount = min( target->pev->max_health - target->pev->health, healAmount );
-	healAmount = min( healAmount, (float) m_hPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
+	healAmount = V_min( target->pev->max_health - target->pev->health, healAmount );
+	healAmount = V_min( healAmount, (float) m_hPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
 
 	ClearMultiDamage();
 	UseAmmo( (int) healAmount );
@@ -190,7 +190,7 @@ void CMedkit::PrimaryAttack( void )
 
 	if ( m_hPlayer->pev->max_health > m_hPlayer->pev->health )
 	{
-		m_hPlayer->TakeHealth( min( m_hPlayer->pev->max_health - m_hPlayer->pev->health,
+		m_hPlayer->TakeHealth( V_min( m_hPlayer->pev->max_health - m_hPlayer->pev->health,
 			(float) (int) healAmount * 0.25f ), DMG_MEDKITHEAL, 0 );
 	}
 

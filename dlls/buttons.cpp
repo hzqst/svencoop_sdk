@@ -284,14 +284,14 @@ void CMultiSource::Register(void)
 // CBaseButton
 TYPEDESCRIPTION CBaseButton::m_SaveData[] =
 {
-	DEFINE_FIELD( CBaseButton, m_fStayPushed, FIELD_BOOLEAN ),
-	DEFINE_FIELD( CBaseButton, m_fRotating, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CBaseButton, m_fStayPushed, FIELD_CHARACTER ),
+	DEFINE_FIELD( CBaseButton, m_fRotating, FIELD_CHARACTER ),
 
 	DEFINE_FIELD( CBaseButton, m_sounds, FIELD_INTEGER ),
-	DEFINE_FIELD( CBaseButton, m_bLockedSound, FIELD_CHARACTER ),
-	DEFINE_FIELD( CBaseButton, m_bLockedSentence, FIELD_CHARACTER ),
-	DEFINE_FIELD( CBaseButton, m_bUnlockedSound, FIELD_CHARACTER ),	
-	DEFINE_FIELD( CBaseButton, m_bUnlockedSentence, FIELD_CHARACTER ),
+	DEFINE_FIELD( CBaseButton, m_LockSoundsIndices.m_bLockedSound, FIELD_CHARACTER ),
+	DEFINE_FIELD( CBaseButton, m_LockSoundsIndices.m_bLockedSentence, FIELD_CHARACTER ),
+	DEFINE_FIELD( CBaseButton, m_LockSoundsIndices.m_bUnlockedSound, FIELD_CHARACTER ),
+	DEFINE_FIELD( CBaseButton, m_LockSoundsIndices.m_bUnlockedSentence, FIELD_CHARACTER ),
 	DEFINE_FIELD( CBaseButton, m_strChangeTarget, FIELD_STRING ),
 //	DEFINE_FIELD( CBaseButton, m_ls, FIELD_??? ),   // This is restored in Precache()
 };
@@ -319,9 +319,9 @@ void CBaseButton::Precache( void )
 	{
 		PRECACHE_SOUND( (char *) STRING( m_ls.sLockedSound ) );
 	}
-	else if (m_bLockedSound)
+	else if (m_LockSoundsIndices.m_bLockedSound)
 	{
-		pszSound = ButtonSound( (int)m_bLockedSound );
+		pszSound = ButtonSound( (int)m_LockSoundsIndices.m_bLockedSound );
 		PRECACHE_SOUND((char*)pszSound);
 		m_ls.sLockedSound = ALLOC_STRING(pszSound);
 	}
@@ -330,9 +330,9 @@ void CBaseButton::Precache( void )
 	{
 		PRECACHE_SOUND( (char *) STRING( m_ls.sUnlockedSound ) );
 	}
-	else if (m_bUnlockedSound)
+	else if (m_LockSoundsIndices.m_bUnlockedSound)
 	{
-		pszSound = ButtonSound( (int)m_bUnlockedSound );
+		pszSound = ButtonSound( (int)m_LockSoundsIndices.m_bUnlockedSound );
 		PRECACHE_SOUND((char*)pszSound);
 		m_ls.sUnlockedSound = ALLOC_STRING(pszSound);
 	}
@@ -340,7 +340,7 @@ void CBaseButton::Precache( void )
 	// get sentence group names, for doors which are directly 'touched' to open
 
 	if ( !m_ls.sLockedSentence )
-	switch (m_bLockedSentence)
+	switch (m_LockSoundsIndices.m_bLockedSentence)
 	{
 		case 1: m_ls.sLockedSentence = MAKE_STRING("NA"); break; // access denied
 		case 2: m_ls.sLockedSentence = MAKE_STRING("ND"); break; // security lockout
@@ -356,7 +356,7 @@ void CBaseButton::Precache( void )
 	}
 
 	if ( !m_ls.sUnlockedSentence )
-	switch (m_bUnlockedSentence)
+	switch (m_LockSoundsIndices.m_bUnlockedSentence)
 	{
 		case 1: m_ls.sUnlockedSentence = MAKE_STRING("EA"); break; // access granted
 		case 2: m_ls.sUnlockedSentence = MAKE_STRING("ED"); break; // security door
@@ -384,22 +384,22 @@ void CBaseButton::KeyValue( KeyValueData *pkvd )
 	}	
 	else if (FStrEq(pkvd->szKeyName, "locked_sound"))
 	{
-		m_bLockedSound = atof(pkvd->szValue);
+		m_LockSoundsIndices.m_bLockedSound = atof(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else if (FStrEq(pkvd->szKeyName, "locked_sentence"))
 	{
-		m_bLockedSentence = atof(pkvd->szValue);
+		m_LockSoundsIndices.m_bLockedSentence = atof(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else if (FStrEq(pkvd->szKeyName, "unlocked_sound"))
 	{
-		m_bUnlockedSound = atof(pkvd->szValue);
+		m_LockSoundsIndices.m_bUnlockedSound = atof(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else if (FStrEq(pkvd->szKeyName, "unlocked_sentence"))
 	{
-		m_bUnlockedSentence = atof(pkvd->szValue);
+		m_LockSoundsIndices.m_bUnlockedSentence = atof(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else if ( !stricmp( pkvd->szKeyName, "locked_sound_override" ) )

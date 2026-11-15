@@ -1348,18 +1348,15 @@ void CBaseTurret::BecomeDead( float flSavedHealth )
 
 float CTurret::GetPointsForDamage( float flDamage )
 {
-	return ( pev->max_health / sk_turret_health.value ) * 5.0f
-	       * ( flDamage / pev->max_health );
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return ( pev->max_health / sk_turret_health.value ) * 5.0f * ( flDamage / pev->max_health );
 }
 
 float CMiniTurret::GetPointsForDamage( float flDamage )
 {
-	return ( pev->max_health / sk_miniturret_health.value ) * 3.0f
-	       * ( flDamage / pev->max_health );
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return ( pev->max_health / sk_miniturret_health.value ) * 3.0f * ( flDamage / pev->max_health );
 }
-
-
-
 
 //=========================================================
 // Sentry gun - smallest turret, placed near grunt entrenchments
@@ -1420,8 +1417,8 @@ void CSentry::Deploy( void )
 
 float CSentry::GetPointsForDamage( float flDamage )
 {
-	return ( pev->max_health / sk_sentry_health.value ) * 2.0f
-	       * ( flDamage / pev->max_health );
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return ( pev->max_health / sk_sentry_health.value ) * 2.0f * ( flDamage / pev->max_health );
 }
 
 void CSentry::Precache()

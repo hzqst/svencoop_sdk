@@ -69,9 +69,9 @@ TYPEDESCRIPTION CShocktrooper::m_SaveData[] = {
 	DEFINE_FIELD( CShocktrooper, m_flNextGrenadeCheck, FIELD_TIME ),
 	DEFINE_FIELD( CShocktrooper, m_flNextPainTime, FIELD_TIME ),
 	DEFINE_FIELD( CShocktrooper, m_vecTossVelocity, FIELD_VECTOR ),
-	DEFINE_FIELD( CShocktrooper, m_fThrowGrenade, FIELD_BOOLEAN ),
-	DEFINE_FIELD( CShocktrooper, m_fStanding, FIELD_BOOLEAN ),
-	DEFINE_FIELD( CShocktrooper, m_fFirstEncounter, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CShocktrooper, m_fThrowGrenade, FIELD_CHARACTER ),
+	DEFINE_FIELD( CShocktrooper, m_fStanding, FIELD_CHARACTER ),
+	DEFINE_FIELD( CShocktrooper, m_fFirstEncounter, FIELD_CHARACTER ),
 	DEFINE_FIELD( CShocktrooper, m_cClipSize, FIELD_INTEGER ),
 	DEFINE_FIELD( CShocktrooper, m_voicePitch, FIELD_INTEGER ),
 	DEFINE_FIELD( CShocktrooper, m_iSentence, FIELD_INTEGER )
@@ -215,7 +215,8 @@ int CShocktrooper::ObjectCaps( void )
 
 float CShocktrooper::GetPointsForDamage( float damage )
 {
-	return ( pev->max_health / sk_shocktrooper_health.value ) * 6.0 * ( damage / pev->max_health );
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return ( pev->max_health / sk_shocktrooper_health.value ) * 6.0f * ( damage / pev->max_health );
 }
 
 void CShocktrooper::Revive( void )
@@ -226,7 +227,7 @@ void CShocktrooper::Revive( void )
 
 int CShocktrooper::ISoundMask( void )
 {
-	return bits_SOUND_WORLD | bits_SOUND_COMBAT | bits_SOUND_PLAYER | bits_SOUND_DANGER | bits_SOUND_MEAT;
+	return bits_SOUND_WORLD | bits_SOUND_COMBAT | bits_SOUND_PLAYER | bits_SOUND_DANGER | bits_SOUND_BULLETHIT;
 }
 
 void CShocktrooper::SetYawSpeed( void )

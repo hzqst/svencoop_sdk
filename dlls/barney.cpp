@@ -92,7 +92,7 @@ public:
 	virtual int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
-	BOOL	m_fGunDrawn;
+	bool	m_fGunDrawn;
 	float	m_painTime;
 	float	m_checkAttackTime;
 	BOOL	m_lastAttackCheck;
@@ -111,7 +111,7 @@ LINK_ENTITY_TO_CLASS( monster_barney, CBarney );
 
 TYPEDESCRIPTION CBarney::m_SaveData[] =
 {
-	DEFINE_FIELD( CBarney, m_fGunDrawn, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CBarney, m_fGunDrawn, FIELD_CHARACTER ),
 	DEFINE_FIELD( CBarney, m_painTime, FIELD_TIME ),
 };
 
@@ -842,6 +842,7 @@ int CBarney::ObjectCaps( void )
 
 float CBarney::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return (float) ( (double) ( pev->max_health / sk_barney_health.value ) * 2.5 * (double) ( damage / pev->max_health ) );
 }
 
@@ -957,7 +958,7 @@ void CDeadBarney :: Spawn( )
 	pev->effects		= 0;
 	pev->yaw_speed		= 8;
 
-	m_iPose = max( 0, min( m_iPose, (int) ARRAYSIZE( m_szPoses ) - 1 ) );
+	m_iPose = V_max( 0, V_min( m_iPose, (int) ARRAYSIZE( m_szPoses ) - 1 ) );
 
 	pev->sequence = LookupSequence( m_szPoses[m_iPose] );
 

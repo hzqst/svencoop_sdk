@@ -9,7 +9,12 @@ extern cvar_t sk_scientist_health;
 class CScientistCleansuit : public CScientist
 {
 public:
-	float GetPointsForDamage( float flDamage ) { return pev->max_health / sk_scientist_health.value * ( flDamage / pev->max_health ); }
+	float GetPointsForDamage( float flDamage )
+	{
+		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+		return pev->max_health / sk_scientist_health.value * ( flDamage / pev->max_health );
+	}
+
 	void SetPlayerAlly( bool state ) { SetPlayerAllyDirect( !state ); }
 	void Spawn( void );
 	void Precache( void );

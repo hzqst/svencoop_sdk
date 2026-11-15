@@ -752,7 +752,9 @@ void CHud :: Init( void )
 {
 	CVAR_CREATE("cl_outline_sounds", "0", FCVAR_CLIENTDLL);
 	CVAR_CREATE("cl_spectrum_debug", "0", FCVAR_CLIENTDLL);
+#ifdef _WIN32
 	CVAR_CREATE("s_force_dsound", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
+#endif
 	CVAR_CREATE("s_mute_unfocused", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
 	CClient_SoundEngine::GetSoundEngine()->Initialize();
 

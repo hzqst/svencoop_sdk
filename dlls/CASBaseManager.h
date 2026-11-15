@@ -114,6 +114,9 @@ private:
 	friend void ASPrintGlobals( const char *fileName );
 	friend void ASOutputConfig( const char *fileName );
 	friend void as_fs_dumpfilesystem_Callback( const CCommand &command );
+	friend void as_fs_quota_usage_Callback( const CCommand &command );
+	friend void as_fs_validate_file_usage_Callback( const CCommand &command );
+	friend void as_execute_Callback( const CCommand &command );
 
 	friend class CASArgument;
 	friend class CASArguments;

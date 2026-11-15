@@ -22,6 +22,7 @@
 #include	"monsters.h"
 #include	"squadmonster.h"
 #include "scripted.h"
+#include "TypedEntityHandle.h"
 
 #define		AFLOCK_MAX_RECRUIT_RADIUS	1024
 #define		AFLOCK_FLY_SPEED			125
@@ -65,7 +66,12 @@ IMPLEMENT_SAVERESTORE( CFlockingFlyerFlock, CBaseMonster );
 class CFlockingFlyer : public CBaseMonster
 {
 public:
-	float GetPointsForDamage( float flDamage ) { return 0.01f * flDamage; }
+	float GetPointsForDamage( float flDamage )
+	{
+		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+		return (float) ( 0.01 * flDamage );
+	}
+
 	void Spawn( void );
 	void Precache( void );
 	void SpawnCommonCode( void );
@@ -89,19 +95,20 @@ public:
 	virtual int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
-	int IsLeader( void ) { return m_pSquadLeader == this; }
-	int	InSquad( void ) { return m_pSquadLeader != NULL; }
+	int IsLeader( void ) { return m_hSquadLeader == this; }
+	int	InSquad( void ) { return m_hSquadLeader != NULL; }
 	int	SquadCount( void );
 	void SquadRemove( CFlockingFlyer *pRemove );
 	void SquadUnlink( void );
 	void SquadAdd( CFlockingFlyer *pAdd );
 	void SquadDisband( void );
 
-	CFlockingFlyer *m_pSquadLeader;
-	CFlockingFlyer *m_pSquadNext;
-	BOOL	m_fTurning;// is this boid turning?
-	BOOL	m_fCourseAdjust;// followers set this flag TRUE to override flocking while they avoid something
-	BOOL	m_fPathBlocked;// TRUE if there is an obstacle ahead
+	CEntityHandle<CFlockingFlyer> m_hSquadLeader;
+	CEntityHandle<CFlockingFlyer> m_hSquadNext;
+
+	bool	m_fTurning;// is this boid turning?
+	bool	m_fCourseAdjust;// followers set this flag TRUE to override flocking while they avoid something
+	bool	m_fPathBlocked;// TRUE if there is an obstacle ahead
 	Vector	m_vecReferencePoint;// last place we saw leader
 	Vector	m_vecAdjustedVelocity;// adjusted velocity (used when fCourseAdjust is TRUE)
 	float	m_flGoalSpeed;
@@ -115,11 +122,11 @@ LINK_ENTITY_TO_CLASS( monster_flyer_flock, CFlockingFlyerFlock );
 
 TYPEDESCRIPTION	CFlockingFlyer::m_SaveData[] = 
 {
-	DEFINE_FIELD( CFlockingFlyer, m_pSquadLeader, FIELD_CLASSPTR ),
-	DEFINE_FIELD( CFlockingFlyer, m_pSquadNext, FIELD_CLASSPTR ),
-	DEFINE_FIELD( CFlockingFlyer, m_fTurning, FIELD_BOOLEAN ),
-	DEFINE_FIELD( CFlockingFlyer, m_fCourseAdjust, FIELD_BOOLEAN ),
-	DEFINE_FIELD( CFlockingFlyer, m_fPathBlocked, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CFlockingFlyer, m_hSquadLeader, FIELD_EHANDLE ),
+	DEFINE_FIELD( CFlockingFlyer, m_hSquadNext, FIELD_EHANDLE ),
+	DEFINE_FIELD( CFlockingFlyer, m_fTurning, FIELD_CHARACTER ),
+	DEFINE_FIELD( CFlockingFlyer, m_fCourseAdjust, FIELD_CHARACTER ),
+	DEFINE_FIELD( CFlockingFlyer, m_fPathBlocked, FIELD_CHARACTER ),
 	DEFINE_FIELD( CFlockingFlyer, m_vecReferencePoint, FIELD_POSITION_VECTOR ),
 	DEFINE_FIELD( CFlockingFlyer, m_vecAdjustedVelocity, FIELD_VECTOR ),
 	DEFINE_FIELD( CFlockingFlyer, m_flGoalSpeed, FIELD_FLOAT ),
@@ -197,8 +204,8 @@ void CFlockingFlyerFlock :: SpawnFlock( void )
 			// make this guy the leader.
 			pLeader = pBoid;
 			
-			pLeader->m_pSquadLeader = pLeader;
-			pLeader->m_pSquadNext = NULL;
+			pLeader->m_hSquadLeader = pLeader;
+			pLeader->m_hSquadNext = NULL;
 		}
 
 		vecSpot.x = RANDOM_FLOAT( -R, R );
@@ -275,17 +282,17 @@ void CFlockingFlyer :: Killed( entvars_t *pevAttacker, int iGib )
 {
 	CFlockingFlyer *pSquad;
 	
-	pSquad = (CFlockingFlyer *)m_pSquadLeader;
+	pSquad = (CFlockingFlyer *)m_hSquadLeader;
 
 	while ( pSquad )
 	{
 		pSquad->m_flAlertTime = gpGlobals->time + 15;
-		pSquad = (CFlockingFlyer *)pSquad->m_pSquadNext;
+		pSquad = (CFlockingFlyer *)pSquad->m_hSquadNext;
 	}
 
-	if ( m_pSquadLeader )
+	if ( m_hSquadLeader )
 	{
-		m_pSquadLeader->SquadRemove( this );
+		m_hSquadLeader->SquadRemove( this );
 	}
 
 	pev->deadflag = DEAD_DEAD;
@@ -420,8 +427,8 @@ void CFlockingFlyer :: FormFlock( void )
 	if ( !InSquad() )
 	{
 		// I am my own leader
-		m_pSquadLeader = this;
-		m_pSquadNext = NULL;
+		m_hSquadLeader = this;
+		m_hSquadNext = NULL;
 		int squadCount = 1;
 
 		CBaseEntity *pEntity = NULL;
@@ -454,7 +461,7 @@ void CFlockingFlyer :: SpreadFlock( )
 	Vector		vecDir;
 	float		flSpeed;// holds vector magnitude while we fiddle with the direction
 	
-	CFlockingFlyer *pList = m_pSquadLeader;
+	CFlockingFlyer *pList = m_hSquadLeader;
 	while ( pList )
 	{
 		if ( pList != this && ( pev->origin - pList->pev->origin ).Length() <= AFLOCK_TOO_CLOSE )
@@ -471,7 +478,7 @@ void CFlockingFlyer :: SpreadFlock( )
 			pList->pev->velocity = pList->pev->velocity * flSpeed;
 		}
 
-		pList = pList->m_pSquadNext;
+		pList = pList->m_hSquadNext;
 	}
 }
 
@@ -484,7 +491,7 @@ void CFlockingFlyer :: SpreadFlock2 ( )
 {
 	Vector		vecDir;
 	
-	CFlockingFlyer *pList = m_pSquadLeader;
+	CFlockingFlyer *pList = m_hSquadLeader;
 	while ( pList )
 	{
 		if ( pList != this && ( pev->origin - pList->pev->origin ).Length() <= AFLOCK_TOO_CLOSE )
@@ -495,7 +502,7 @@ void CFlockingFlyer :: SpreadFlock2 ( )
 			pev->velocity = (pev->velocity + vecDir);
 		}
 
-		pList = pList->m_pSquadNext;
+		pList = pList->m_hSquadNext;
 	}
 }
 
@@ -681,33 +688,33 @@ void CFlockingFlyer :: FlockFollowerThink( void )
 		return;
 	}
 
-	vecDirToLeader = ( m_pSquadLeader->pev->origin - pev->origin );
+	vecDirToLeader = ( m_hSquadLeader->pev->origin - pev->origin );
 	flDistToLeader = vecDirToLeader.Length();
 	
 	// match heading with leader
-	pev->angles = m_pSquadLeader->pev->angles;
+	pev->angles = m_hSquadLeader->pev->angles;
 
 	//
 	// We can see the leader, so try to catch up to it
 	//
-	if ( FInViewCone ( m_pSquadLeader ) )
+	if ( FInViewCone ( m_hSquadLeader ) )
 	{
 		// if we're too far away, speed up
 		if ( flDistToLeader > AFLOCK_TOO_FAR )
 		{
-			m_flGoalSpeed = m_pSquadLeader->pev->velocity.Length() * 1.5;
+			m_flGoalSpeed = m_hSquadLeader->pev->velocity.Length() * 1.5;
 		}
 
 		// if we're too close, slow down
 		else if ( flDistToLeader < AFLOCK_TOO_CLOSE )
 		{
-			m_flGoalSpeed = m_pSquadLeader->pev->velocity.Length() * 0.5;
+			m_flGoalSpeed = m_hSquadLeader->pev->velocity.Length() * 0.5;
 		}
 	}
 	else
 	{
 		// wait up! the leader isn't out in front, so we slow down to let him pass
-		m_flGoalSpeed = m_pSquadLeader->pev->velocity.Length() * 0.5;
+		m_flGoalSpeed = m_hSquadLeader->pev->velocity.Length() * 0.5;
 	}
 
 	SpreadFlock2();
@@ -798,8 +805,8 @@ void CFlockingFlyer :: FlockFollowerThink( void )
 //=========================================================
 void CFlockingFlyer :: SquadUnlink( void )
 {
-	m_pSquadLeader = NULL;
-	m_pSquadNext	= NULL;
+	m_hSquadLeader = NULL;
+	m_hSquadNext	= NULL;
 }
 
 //=========================================================
@@ -809,72 +816,72 @@ void CFlockingFlyer :: SquadUnlink( void )
 //=========================================================
 void CFlockingFlyer :: SquadAdd( CFlockingFlyer *pAdd )
 {
-	ASSERT( pAdd!=NULL );
-	ASSERT( !pAdd->InSquad() );
-	ASSERT( this->IsLeader() );
+	if ( !pAdd || pAdd->InSquad() || !IsLeader() )
+		return;
 
-	pAdd->m_pSquadNext = m_pSquadNext;
-	m_pSquadNext = pAdd;
-	pAdd->m_pSquadLeader = this;
+	pAdd->m_hSquadNext = m_hSquadNext;
+	m_hSquadNext = pAdd;
+	pAdd->m_hSquadLeader = this;
 }
 //=========================================================
 //
 // SquadRemove(), remove pRemove from my squad.
-// If I am pRemove, promote m_pSquadNext to leader
+// If I am pRemove, promote m_hSquadNext to leader
 //
 //=========================================================
 void CFlockingFlyer :: SquadRemove( CFlockingFlyer *pRemove )
 {
-	ASSERT( pRemove!=NULL );
-	ASSERT( this->IsLeader() );
-	ASSERT( pRemove->m_pSquadLeader == this );
+	if ( !pRemove || !IsLeader() || pRemove->m_hSquadLeader != this )
+		return;
 
 	if ( SquadCount() > 2 )
 	{
-		// Removing the leader, promote m_pSquadNext to leader
 		if ( pRemove == this )
 		{
-			CFlockingFlyer *pLeader = m_pSquadNext;
-			
-			// copy the enemy LKP to the new leader
-			pLeader->m_vecEnemyLKP = m_vecEnemyLKP;
+			CFlockingFlyer *pLeader = m_hSquadNext;
 
 			if ( pLeader )
 			{
+				pLeader->m_vecEnemyLKP = m_vecEnemyLKP;
+
 				CFlockingFlyer *pList = pLeader;
 
 				while ( pList )
 				{
-					pList->m_pSquadLeader = pLeader;
-					pList = pList->m_pSquadNext;
+					pList->m_hSquadLeader = pLeader;
+					pList = pList->m_hSquadNext;
 				}
-
 			}
+
 			SquadUnlink();
 		}
-		else	// removing a node
+		else
 		{
 			CFlockingFlyer *pList = this;
 
-			// Find the node before pRemove
-			while ( pList->m_pSquadNext != pRemove )
+			while ( pList )
 			{
-				// assert to test valid list construction
-				ASSERT( pList->m_pSquadNext != NULL );
-				pList = pList->m_pSquadNext;
+				CFlockingFlyer *pNext = pList->m_hSquadNext;
+
+				if ( !pNext )
+					break;
+
+				if ( pNext == pRemove )
+				{
+					pList->m_hSquadNext = pRemove->m_hSquadNext;
+					break;
+				}
+
+				pList = pNext;
 			}
-			// List validity
-			ASSERT( pList->m_pSquadNext == pRemove );
 
-			// Relink without pRemove
-			pList->m_pSquadNext = pRemove->m_pSquadNext;
-
-			// Unlink pRemove
 			pRemove->SquadUnlink();
 		}
 	}
 	else
+	{
 		SquadDisband();
+	}
 }
 //=========================================================
 //
@@ -884,12 +891,12 @@ void CFlockingFlyer :: SquadRemove( CFlockingFlyer *pRemove )
 //=========================================================
 int CFlockingFlyer :: SquadCount( void )
 {
-	CFlockingFlyer *pList = m_pSquadLeader;
+	CFlockingFlyer *pList = m_hSquadLeader;
 	int squadCount = 0;
 	while ( pList )
 	{
 		squadCount++;
-		pList = pList->m_pSquadNext;
+		pList = pList->m_hSquadNext;
 	}
 
 	return squadCount;
@@ -902,12 +909,12 @@ int CFlockingFlyer :: SquadCount( void )
 //=========================================================
 void CFlockingFlyer :: SquadDisband( void )
 {
-	CFlockingFlyer *pList = m_pSquadLeader;
+	CFlockingFlyer *pList = m_hSquadLeader;
 	CFlockingFlyer *pNext;
 
 	while ( pList )
 	{
-		pNext = pList->m_pSquadNext;
+		pNext = pList->m_hSquadNext;
 		pList->SquadUnlink();
 		pList = pNext;
 	}

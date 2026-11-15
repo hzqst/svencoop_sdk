@@ -1,3 +1,5 @@
+#include <fmodex/fmod_errors.h>
+
 #include "extdll.h"
 #include "hud_iface.h"
 #include "client_support.h"
@@ -15,7 +17,7 @@ extern int g_iWaterLevel;
 
 CClient_SoundEngine *CClient_SoundEngine::m_pSoundEngine;
 
-FMOD_RESULT FMOD_CALL FMOD_HandleSystemCallback(FMOD_SYSTEM *system,
+FMOD_RESULT F_CALLBACK FMOD_HandleSystemCallback(FMOD_SYSTEM *system,
 	FMOD_SYSTEM_CALLBACKTYPE type, void *command1, void *command2)
 {
 	return FMOD_OK;
@@ -47,7 +49,7 @@ void CClient_SoundEngine::Initialize(void)
 	FlushCache(false);
 	m_Materials.Reset();
 
-	if (HasCriticalStatusResult(FMOD_System_Create(&m_pSystem), NULL))
+	if (HasCriticalStatusResult(FMOD::System_Create(&m_pSystem), NULL))
 		return;
 
 	if (HasCriticalStatusResult(m_pSystem->setCallback(FMOD_HandleSystemCallback), NULL))
@@ -120,6 +122,7 @@ FMOD_RESULT CClient_SoundEngine::SetOutputDriver(void)
 	if (!m_pSystem)
 		return FMOD_ERR_INITIALIZATION;
 
+	int drivers = 0;
 	FMOD_OUTPUTTYPE output = FMOD_OUTPUTTYPE_AUTODETECT;
 
 	if (m_bOutputInitialized)
@@ -129,11 +132,13 @@ FMOD_RESULT CClient_SoundEngine::SetOutputDriver(void)
 		StatusResult(m_pSystem->release());
 	}
 
+#ifdef _WIN32
 	m_pForceDirectSound = gEngfuncs.pfnGetCvarPointer("s_force_dsound");
+
 	if (m_pForceDirectSound && m_pForceDirectSound->value >= 1)
 		output = FMOD_OUTPUTTYPE_DSOUND;
+#endif
 
-	int drivers;
 	FMOD_RESULT result = m_pSystem->getNumDrivers(&drivers);
 
 	if (HasCriticalStatusResult(result, NULL))
@@ -366,12 +371,12 @@ void CClient_SoundEngine::UpdateEnvironmentalEffect(void)
 		StatusResult(master->setMute(mute));
 	}
 
-	StatusResult(m_pSfxGroup->setVolume(min(1.0f, max(0.0f, m_pVolume->value))));
-	StatusResult(m_pMusicGroup->setVolume(min(1.0f, max(0.0f, m_pMusicVolume->value))));
+	StatusResult(m_pSfxGroup->setVolume(V_min(1.0f, V_max(0.0f, m_pVolume->value))));
+	StatusResult(m_pMusicGroup->setVolume(V_min(1.0f, V_max(0.0f, m_pMusicVolume->value))));
 
 	if (m_iReverbType != room)
 	{
-		room = min(CSXROOM - 1, max(0, room));
+		room = V_min(CSXROOM - 1, V_max(0, room));
 
 		FMOD_REVERB_PROPERTIES properties = eax_presets[room];
 

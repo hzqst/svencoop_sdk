@@ -32,7 +32,12 @@
 class CBloater : public CBaseMonster
 {
 public:
-	float GetPointsForDamage( float flDamage ) { return 0.01f * flDamage; }
+	float GetPointsForDamage( float flDamage )
+	{
+		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+		return (float) ( 0.01 * flDamage );
+	}
+
 	void Spawn( void );
 	void Precache( void );
 	void SetYawSpeed( void );

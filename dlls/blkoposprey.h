@@ -7,6 +7,7 @@ public:
 	void                   Spawn( void );
 	void                   Precache( void );
 	void                   OnDestroy( void );
+	void                   UpdateOnRemove( void );
 	void                   KeyValue( KeyValueData *pkvd );
 	int                    Save( CSave &save );
 	int                    Restore( CRestore &restore );

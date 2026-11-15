@@ -191,10 +191,11 @@ public:
 
 	virtual float GetPointsForDamage( float flDamage )
 	{
+		//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 		if ( !m_pHandler->MethodExists( "float GetPointsForDamage(float)" ) )
 			return BASE::GetPointsForDamage( flDamage );
 
-		float flPoints = 0;
+		float flPoints = flDamage;
 
 		m_pHandler->CallMethod( &flPoints, false, "float GetPointsForDamage(float)", flDamage );
 		return flPoints;

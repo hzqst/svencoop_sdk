@@ -682,7 +682,7 @@ CBasePlayer::Spawn
 */
 void CBasePlayer::Spawn( void )
 {
-	if (m_pActiveItem)
+	if ( m_pActiveItem && pev->viewmodel )
 		m_pActiveItem->Deploy( );
 }
 
@@ -1045,7 +1045,8 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	to->client.m_iId					= from->client.m_iId;
 
 	// Now see if we issued a changeweapon command ( and we're not dead )
-	if ( cmd->weaponselect && ( player.pev->deadflag != ( DEAD_DISCARDBODY + 1 ) ) )
+	if ( cmd->weaponselect && player.pev->viewmodel
+	     && ( player.pev->deadflag != ( DEAD_DISCARDBODY + 1 ) ) )
 	{
 		// Switched to a different weapon?
 		if ( from->weapondata[ cmd->weaponselect ].m_iId == cmd->weaponselect )

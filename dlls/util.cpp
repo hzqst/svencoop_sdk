@@ -3258,7 +3258,7 @@ int CSave :: WriteFields( const char *pname, void *pBaseData, TYPEDESCRIPTION *p
 						entityArray[j] = EntityIndex( ((EOFFSET *)pOutputData)[j] );
 					break;
 					case FIELD_EHANDLE:
-						entityArray[j] = EntityIndex( (CBaseEntity *)(((EHANDLE *)pOutputData)[j]) );
+						entityArray[j] = EntityIndex( (CBaseEntity *) ( (CEntityHandle<CBaseEntity> *) pOutputData )[j] );
 					break;
 				}
 			}

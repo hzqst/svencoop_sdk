@@ -18,15 +18,15 @@ SERVER_CRYPTOPP_SRC_DIR=$(SOURCE_DIR)/external/cryptopp
 SERVER_CRYPTOPP_OBJ_DIR=$(HLDLL_OBJ_DIR)/cryptopp
 
 #CFLAGS=$(BASE_CFLAGS) $(ARCH_CFLAGS) $(SHLIBCFLAGS) -DCLIENT_WEAPONS -DDISABLE_VEC_ORIGIN
-CFLAGS=$(BASE_CFLAGS)  $(ARCH_CFLAGS)  -DCLIENT_WEAPONS -DDISABLE_VEC_ORIGIN -DAS_PROCESS_METADATA=0 -DAS_USE_STLNAMES=1 -DAS_USE_ACCESSORS=0
+CFLAGS=$(filter-out -fno-exceptions,$(BASE_CFLAGS)) -fexceptions $(ARCH_CFLAGS) -fPIC -DCLIENT_WEAPONS -DAS_PROCESS_METADATA=0 -DAS_USE_STLNAMES=1 -DAS_USE_ACCESSORS=0
 #-O3 -ffast-math -fno-strength-reduce
 
 HLDLL_INCLUDEDIRS=-I$(ENGINE_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PM_SRC_DIR) -I$(GAME_SHARED_SRC_DIR) -I$(PUBLIC_SRC_DIR) -I$(SOURCE_DIR)/external/angelscript/sdk/angelscript/include
-HLWPN_INCLUDEDIRS=-I$(HLDLL_SRC_DIR) -I$(ENGINE_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PM_SRC_DIR) -I$(PUBLIC_SRC_DIR)
+HLWPN_INCLUDEDIRS=-I$(SOURCE_DIR)/external/angelscript/sdk/angelscript/include -I$(HLDLL_SRC_DIR) -I$(ENGINE_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PM_SRC_DIR) -I$(GAME_SHARED_SRC_DIR) -I$(PUBLIC_SRC_DIR)
 PM_INCLUDEDIRS=-I$(HLDLL_SRC_DIR) -I$(GAME_SHARED_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(ENGINE_SRC_DIR) -I$(PUBLIC_SRC_DIR)
-GAME_SHARED_INCLUDEDIRS=-I$(HLDLL_SRC_DIR) -I$(ENGINE_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PM_SRC_DIR) -I$(PUBLIC_SRC_DIR)
+GAME_SHARED_INCLUDEDIRS=-I$(HLDLL_SRC_DIR) -I$(ENGINE_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PM_SRC_DIR) -I$(GAME_SHARED_SRC_DIR) -I$(PUBLIC_SRC_DIR)
 
-LDFLAGS= -lm -lstdc++ -ldl -lpthread
+LDFLAGS= -lm -lcurl
 
 DO_HLDLL_CC=$(CC) $(HLDLL_INCLUDEDIRS) $(CFLAGS) -o $@ -c $<
 DO_HLWPN_CC=$(CC) $(HLWPN_INCLUDEDIRS) $(CFLAGS) -o $@ -c $<
@@ -547,71 +547,90 @@ SERVER_CRYPTOPP_OBJS = \
 	$(SERVER_CRYPTOPP_OBJ_DIR)/sse_simd.o \
 	$(SERVER_CRYPTOPP_OBJ_DIR)/strciphr.o
 
-all: dirs server.$(SHLIBEXT)
+# Targets
+ALL_SERVER_OBJS=$(HLDLL_OBJS) $(HLWPN_OBJS) $(PM_OBJS) $(GAME_SHARED_OBJS) $(ANGELSCRIPT_OBJS) $(SVEN_SCRIPT_RUNTIME_LIB) $(SERVER_CRYPTOPP_OBJS)
+SERVER_LINK_FLAGS=$(LDFLAGS) $(SHLIBLDFLAGS) -Wl,--no-undefined -Wl,-rpath,'$$ORIGIN' $(CPP_LIB)
 
-dirs:
-	-mkdir $(BUILD_OBJ_DIR)
-	-mkdir $(HLDLL_OBJ_DIR)
-	-mkdir $(HLWPN_OBJ_DIR)
-	-mkdir $(PM_OBJ_DIR)
-	-mkdir $(GAME_SHARED_OBJ_DIR)
-	-mkdir $(ANGELSCRIPT_OBJ_DIR)
+all: server.$(SHLIBEXT)
 
-server.$(SHLIBEXT): $(HLDLL_OBJS) $(HLWPN_OBJS) $(PM_OBJS) $(GAME_SHARED_OBJS) $(ANGELSCRIPT_OBJS) $(SVEN_SCRIPT_RUNTIME_LIB) $(SERVER_CRYPTOPP_OBJS)
-	$(CC) $(LDFLAGS) $(SHLIBLDFLAGS) -o $(BUILD_DIR)/$@ $(HLDLL_OBJS) $(HLWPN_OBJS) $(PM_OBJS) $(GAME_SHARED_OBJS) $(ANGELSCRIPT_OBJS) $(SVEN_SCRIPT_RUNTIME_LIB) $(SERVER_CRYPTOPP_OBJS) -lcurl
-	
+server.$(SHLIBEXT): $(ALL_SERVER_OBJS)
+	$(CPLUS) -o $(BUILD_DIR)/$@ $(ALL_SERVER_OBJS) $(SERVER_LINK_FLAGS)
+
 $(SVEN_SCRIPT_RUNTIME_LIB): $(SVEN_SCRIPT_RUNTIME_OBJS)
 	$(AR) rcs $@ $^
 
-$(HLWPN_OBJ_DIR)/%.o : $(HLWPN_SRC_DIR)/%.cpp
+# Create directories
+$(HLDLL_OBJ_DIR):
+	-mkdir -p $(HLDLL_OBJ_DIR)
+	-mkdir -p $(HLDLL_OBJ_DIR)/nav
+
+$(HLWPN_OBJ_DIR):
+	-mkdir -p $(HLWPN_OBJ_DIR)
+
+$(PM_OBJ_DIR):
+	-mkdir -p $(PM_OBJ_DIR)
+
+$(GAME_SHARED_OBJ_DIR):
+	-mkdir -p $(GAME_SHARED_OBJ_DIR)
+
+$(ANGELSCRIPT_OBJ_DIR):
+	-mkdir -p $(ANGELSCRIPT_OBJ_DIR)
+
+$(SERVER_CRYPTOPP_OBJ_DIR):
+	-mkdir -p $(SERVER_CRYPTOPP_OBJ_DIR)
+
+# Build rules
+$(HLDLL_OBJS) $(HLWPN_OBJS) $(PM_OBJS) $(GAME_SHARED_OBJS) $(ANGELSCRIPT_OBJS) $(SVEN_SCRIPT_RUNTIME_OBJS) $(SERVER_CRYPTOPP_OBJS): $(lastword $(MAKEFILE_LIST))
+
+$(HLWPN_OBJ_DIR)/%.o : $(HLWPN_SRC_DIR)/%.cpp | $(HLWPN_OBJ_DIR)
 	$(DO_HLWPN_CC)
 
-$(HLDLL_OBJ_DIR)/%.o : $(HLDLL_SRC_DIR)/%.cpp
+$(HLDLL_OBJ_DIR)/%.o : $(HLDLL_SRC_DIR)/%.cpp | $(HLDLL_OBJ_DIR)
 	$(DO_HLDLL_CC)
 
-$(HLDLL_OBJ_DIR)/donid_miniz.o : $(SOURCE_DIR)/external/miniz/miniz.c
+$(HLDLL_OBJ_DIR)/donid_miniz.o : $(SOURCE_DIR)/external/miniz/miniz.c | $(HLDLL_OBJ_DIR)
 	$(DO_HLDLL_CC)
 
-$(PM_OBJ_DIR)/%.o : $(PM_SRC_DIR)/%.cpp
+$(PM_OBJ_DIR)/%.o : $(PM_SRC_DIR)/%.cpp | $(PM_OBJ_DIR)
 	$(DO_PM_CC)
 
-$(GAME_SHARED_OBJ_DIR)/%.o : $(GAME_SHARED_SRC_DIR)/%.cpp
+$(GAME_SHARED_OBJ_DIR)/%.o : $(GAME_SHARED_SRC_DIR)/%.cpp | $(GAME_SHARED_OBJ_DIR)
 	$(DO_GAME_SHARED_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/%.o : $(ANGELSCRIPT_SRC_DIR)/%.cpp
+$(ANGELSCRIPT_OBJ_DIR)/%.o : $(ANGELSCRIPT_SRC_DIR)/%.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/contextmgr.o : $(ANGELSCRIPT_ADDON_DIR)/contextmgr/contextmgr.cpp
+$(ANGELSCRIPT_OBJ_DIR)/contextmgr.o : $(ANGELSCRIPT_ADDON_DIR)/contextmgr/contextmgr.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/debugger.o : $(ANGELSCRIPT_ADDON_DIR)/debugger/debugger.cpp
+$(ANGELSCRIPT_OBJ_DIR)/debugger.o : $(ANGELSCRIPT_ADDON_DIR)/debugger/debugger.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/scriptany.o : $(ANGELSCRIPT_ADDON_DIR)/scriptany/scriptany.cpp
+$(ANGELSCRIPT_OBJ_DIR)/scriptany.o : $(ANGELSCRIPT_ADDON_DIR)/scriptany/scriptany.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/scripthandle.o : $(ANGELSCRIPT_ADDON_DIR)/scripthandle/scripthandle.cpp
+$(ANGELSCRIPT_OBJ_DIR)/scripthandle.o : $(ANGELSCRIPT_ADDON_DIR)/scripthandle/scripthandle.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/scriptarray.o : $(ANGELSCRIPT_ADDON_DIR)/scriptarray/scriptarray.cpp
+$(ANGELSCRIPT_OBJ_DIR)/scriptarray.o : $(ANGELSCRIPT_ADDON_DIR)/scriptarray/scriptarray.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/scriptmath.o : $(ANGELSCRIPT_ADDON_DIR)/scriptmath/scriptmath.cpp
+$(ANGELSCRIPT_OBJ_DIR)/scriptmath.o : $(ANGELSCRIPT_ADDON_DIR)/scriptmath/scriptmath.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC) -DAS_USE_FLOAT=1
 
-$(ANGELSCRIPT_OBJ_DIR)/weakref.o : $(ANGELSCRIPT_ADDON_DIR)/weakref/weakref.cpp
+$(ANGELSCRIPT_OBJ_DIR)/weakref.o : $(ANGELSCRIPT_ADDON_DIR)/weakref/weakref.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/scriptgrid.o : $(ANGELSCRIPT_ADDON_DIR)/scriptgrid/scriptgrid.cpp
+$(ANGELSCRIPT_OBJ_DIR)/scriptgrid.o : $(ANGELSCRIPT_ADDON_DIR)/scriptgrid/scriptgrid.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/scriptmathcomplex.o : $(ANGELSCRIPT_ADDON_DIR)/scriptmath/scriptmathcomplex.cpp
+$(ANGELSCRIPT_OBJ_DIR)/scriptmathcomplex.o : $(ANGELSCRIPT_ADDON_DIR)/scriptmath/scriptmathcomplex.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/scripthelper.o : $(ANGELSCRIPT_ADDON_DIR)/scripthelper/scripthelper.cpp
+$(ANGELSCRIPT_OBJ_DIR)/scripthelper.o : $(ANGELSCRIPT_ADDON_DIR)/scripthelper/scripthelper.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
-$(ANGELSCRIPT_OBJ_DIR)/scriptbuilder.o : $(ANGELSCRIPT_ADDON_DIR)/scriptbuilder/scriptbuilder.cpp
+$(ANGELSCRIPT_OBJ_DIR)/scriptbuilder.o : $(ANGELSCRIPT_ADDON_DIR)/scriptbuilder/scriptbuilder.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)
 
 clean:
@@ -619,24 +638,18 @@ clean:
 	-rm -rf $(PM_OBJ_DIR)
 	-rm -rf $(HLWPN_OBJ_DIR)
 	-rm -rf $(HLDLL_OBJ_DIR)
-	-rm -f hl_$(ARCH).$(SHLIBEXT)
+	-rm -f $(BUILD_DIR)/server.$(SHLIBEXT)
 
-$(HLDLL_OBJ_DIR)/interface.o : $(PUBLIC_SRC_DIR)/interface.cpp
+$(HLDLL_OBJ_DIR)/interface.o : $(PUBLIC_SRC_DIR)/interface.cpp | $(HLDLL_OBJ_DIR)
 	$(DO_HLDLL_CC)
-
-# The custom-entity creation interceptor catches C++ factory exceptions.
-$(HLDLL_OBJ_DIR)/cbase.o: CFLAGS += -fexceptions
 
 $(SERVER_CRYPTOPP_OBJ_DIR)/gcm_simd.o: CFLAGS += -mssse3 -mpclmul
 $(SERVER_CRYPTOPP_OBJ_DIR)/rijndael_simd.o: CFLAGS += -msse4.1 -maes
 $(SERVER_CRYPTOPP_OBJ_DIR)/sha_simd.o: CFLAGS += -msse4.2 -msha
 $(SERVER_CRYPTOPP_OBJ_DIR)/sse_simd.o: CFLAGS += -msse2
 
-$(SERVER_CRYPTOPP_OBJ_DIR):
-	mkdir -p $@
-
 $(SERVER_CRYPTOPP_OBJ_DIR)/%.o : $(SERVER_CRYPTOPP_SRC_DIR)/%.cpp | $(SERVER_CRYPTOPP_OBJ_DIR)
 	$(CPLUS) $(CFLAGS) $(SHLIBCFLAGS) -o $@ -c $<
 
-$(ANGELSCRIPT_OBJ_DIR)/serializer.o : $(ANGELSCRIPT_ADDON_DIR)/serializer/serializer.cpp
+$(ANGELSCRIPT_OBJ_DIR)/serializer.o : $(ANGELSCRIPT_ADDON_DIR)/serializer/serializer.cpp | $(ANGELSCRIPT_OBJ_DIR)
 	$(DO_ANGELSCRIPT_CC)

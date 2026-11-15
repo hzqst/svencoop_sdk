@@ -17,11 +17,11 @@
 
 
 #include "pm_materials.h"
+#include "TypedEntityHandle.h"
 
 #ifndef CLIENT_DLL
 #include <unordered_map>
 #include <unordered_set>
-#include "TypedEntityHandle.h"
 #include "EntityHandle.h"
 #include "VoteDefs.h"
 
@@ -171,6 +171,9 @@ public:
 	bool CanSpawn( void );
 	void EXPORT ForcedRespawnThink( void );
 	void SpawnDead( CBaseEntity *point );
+	virtual bool IsRevivable( void );
+	virtual void BeginRevive( float flTimeUntilRevive );
+	virtual void Revive( void );
 	static EntityHandle<CBaseEntity> SelectSpawnPoint( CBaseEntity *player );
 	void StartRepelDown( float speed );
 	void EndRepelDown( void );
@@ -183,7 +186,8 @@ public:
 	bool                      m_bDeadItemsPacked;
 	bool                      m_bRespawnMessageShown;
 
-	bool m_bBarnacleMouth;
+	bool	m_bBarnacleMouth;
+	EHANDLE	m_hBarnacle;
 
 	float                     m_flLastClientPutInServerTime;
 	Vector                    m_vecRepelStart;
@@ -277,9 +281,7 @@ public:
 	bool	m_fWeaponsBlocked;
 
 #else
-	bool IsMoving( void );
 	virtual float GetLogFrequency( void );
-	virtual float GetPointsForDamage( float flDamage );
 	virtual bool CanStartNextVote( VOTETYPE type );
 	virtual void Vote( VOTEINPUT input, const char *text );
 	virtual VOTEINPUT LastVoteInput();
@@ -287,6 +289,9 @@ public:
 
 	CToPlayerCollisions	m_PlayerCollisions;
 #endif
+
+	virtual float GetPointsForDamage( float flDamage );
+	virtual bool IsMoving( void );
 
 	// Grapple firing, rappel preference, and release state
 	bool	m_fGrappleFired;
@@ -379,18 +384,19 @@ public:
 
 	int					m_bitsHUDDamage;		// Damage bits for the current fame. These get sent to 
 												// the hude via the DAMAGE message
-	BOOL				m_fInitHUD;				// True when deferred HUD restart msg needs to be sent
+	bool				m_fInitHUD;				// True when deferred HUD restart msg needs to be sent
 	BOOL				m_fGameHUDInitialized;
 	float				m_flNextTimeEndUpdate;
 	int					m_iTrain;				// Train control position
 	BOOL				m_fWeapon;				// Set this to FALSE to force a reset of the current weapon HUD info
 
-	EHANDLE				m_pTank;				// the tank which the player is currently controlling,  NULL if no tank
+	CEntityHandle<CBaseEntity> m_hTank; // the tank which the player is currently controlling,  NULL if no tank
 #ifndef CLIENT_DLL
-	EHANDLE				m_hVehicle;
-	EHANDLE m_hChumtoad;
-	PlayerSlot			*m_pVehicleSlot;
+	CEntityHandle<CBaseEntity> m_hVehicle;
+	EHANDLE                    m_hChumtoad;
+	PlayerSlot                *m_pVehicleSlot;
 #endif
+
 	float				m_fDeadTime;			// the time at which the player died  (used in PlayerDeathThink())
 
 	BOOL			m_fNoPlayerSound;	// a debugging feature. Player makes no sound if this is true. 
@@ -444,6 +450,9 @@ public:
 	char m_szTeamName[TEAM_NAME_LENGTH];
 
 	virtual void Spawn( void );
+#ifndef CLIENT_DLL
+	virtual void SpecialSpawn( void );
+#endif
 	void Pain( void );
 
 //	virtual void Think( void );

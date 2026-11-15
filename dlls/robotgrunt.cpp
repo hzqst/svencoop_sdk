@@ -755,6 +755,7 @@ int CRobotGrunt::IRelationship( CBaseEntity *target, bool ignoreNoTarget )
 
 float CRobotGrunt::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float points = pev->max_health / sk_hgrunt_health.value;
 	float fraction = damage / pev->max_health;
 

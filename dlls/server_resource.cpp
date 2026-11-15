@@ -1,7 +1,7 @@
 #include "extdll.h"
 #include "server_resource.h"
 #include "server_support.h"
-#include "filesystem.h"
+#include "FileSystem.h"
 #include <string.h>
 
 bool UTIL_ExtractDirectoryFromFilename(const char *filename, char *directory, unsigned int size, bool stripLeadingSlashes)

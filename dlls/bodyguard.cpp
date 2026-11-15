@@ -296,6 +296,7 @@ void CBodyGuard::SetPlayerAlly( bool state )
 
 float CBodyGuard::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float healthFactor = pev->max_health / sk_barney_health.value;
 	float fraction = damage / pev->max_health;
 
@@ -822,7 +823,7 @@ void CBodyGuard::StartTask( Task_t *task )
 	}
 
 	m_fMinigunStarted = false;
-	m_flThinkInterval = 0.1;
+	m_flThinkDelay = 0.1;
 }
 
 void CBodyGuard::RunTask( Task_t *task )
@@ -879,7 +880,7 @@ void CBodyGuard::RunTask( Task_t *task )
 
 	if ( enemy && !HasConditions( bits_COND_ENEMY_OCCLUDED ) && gpGlobals->time >= m_flSpinupEnd )
 	{
-		m_flThinkInterval = 0;
+		m_flThinkDelay = 0;
 
 		if ( gpGlobals->time < m_flNextMinigunAttack )
 			return;
@@ -909,7 +910,7 @@ void CBodyGuard::RunTask( Task_t *task )
 			else if ( previous->IsAlive() )
 			{
 				m_hEnemy = previous;
-				m_flThinkInterval = 0.1;
+				m_flThinkDelay = 0.1;
 
 				int pitch = RANDOM_LONG( -5, 5 ) + PITCH_NORM;
 
@@ -955,7 +956,7 @@ void CBodyGuard::RunTask( Task_t *task )
 		return;
 	}
 
-	m_flThinkInterval = 0.1;
+	m_flThinkDelay = 0.1;
 
 	int pitch = RANDOM_LONG( -5, 5 ) + PITCH_NORM;
 

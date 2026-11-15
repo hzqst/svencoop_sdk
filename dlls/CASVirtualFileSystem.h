@@ -9,6 +9,7 @@ class CASFile;
 class CASFileQuota;
 class CASBaseManager;
 class CASServerManager;
+class CCommand;
 
 class CASVirtualFileSystem : public CASDirectoryList, public CASExtensionList
 {
@@ -27,6 +28,8 @@ public:
 
 private:
 	friend class CASFile;
+	friend void as_fs_quota_usage_Callback( const CCommand &command );
+	friend void as_fs_validate_file_usage_Callback( const CCommand &command );
 	friend const CASFileQuota *CASVirtualFileSystem_GetFileQuota(const CASVirtualFileSystem *fileSystem);
 	friend class CASBaseManager;
 	friend class CASServerManager;

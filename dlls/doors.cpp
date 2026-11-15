@@ -188,6 +188,32 @@ void SetLockSounds( CBaseEntity *pEntity, locksound_t &sounds, LockSoundsIndices
 	}
 }
 
+bool CStartStopVars::KeyValue( KeyValueData *pkvd )
+{
+	if ( FStrEq( pkvd->szKeyName, "fireonstart" ) )
+	{
+		m_iszFireOnStart = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "fireonstart_triggerstate" ) )
+	{
+		m_iFireOnStartTriggerState = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "fireonstop" ) )
+	{
+		m_iszFireOnStop = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "fireonstop_triggerstate" ) )
+	{
+		m_iFireOnStopTriggerState = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+
+	return pkvd->fHandled != 0;
+}
+
 void CStartStopVars::TriggerStartedTargets( CBaseEntity *owner, EntityHandle<CBaseEntity> &activator )
 {
 	if ( m_iszFireOnStart )
@@ -1913,7 +1939,6 @@ LINK_ENTITY_TO_CLASS( momentary_door, CMomentaryDoor );
 TYPEDESCRIPTION	CMomentaryDoor::m_SaveData[] = 
 {
 	DEFINE_FIELD( CMomentaryDoor, m_bMoveSnd, FIELD_CHARACTER ),
-	DEFINE_FIELD( CMomentaryDoor, m_bStopSnd, FIELD_CHARACTER ),
 };
 
 IMPLEMENT_SAVERESTORE( CMomentaryDoor, CBaseToggle );

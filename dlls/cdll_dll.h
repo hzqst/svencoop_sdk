@@ -29,7 +29,7 @@
 #define MAX_ITEM_TYPES			10
 #endif
 
-#define MAX_ITEMS				5	// hard coded item types
+#define MAX_ITEMS				6	// hard coded item types
 
 #define	HIDEHUD_WEAPONS		( 1<<0 )
 #define	HIDEHUD_FLASHLIGHT	( 1<<1 )

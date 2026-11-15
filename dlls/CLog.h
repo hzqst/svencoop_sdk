@@ -1,7 +1,7 @@
 #ifndef CLOG_H
 #define CLOG_H
 
-#include "filesystem.h"
+#include "FileSystem.h"
 #include <stdarg.h>
 #include <time.h>
 

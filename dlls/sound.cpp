@@ -1524,27 +1524,8 @@ int SENTENCEG_PlayRndI(edict_t *entity, int isentenceg,
 int SENTENCEG_PlayRndSz(edict_t *entity, const char *szgroupname, 
 					  float volume, float attenuation, int flags, int pitch)
 {
-	char name[64];
-	int ipick;
-	int isentenceg;
-
-	if (!fSentencesInit)
-		return -1;
-
-	name[0] = 0;
-
-	isentenceg = SENTENCEG_GetIndex(szgroupname);
-	if (isentenceg < 0)
-	{
-		ALERT( at_console, "No such sentence group %s\n", szgroupname );
-		return -1;
-	}
-
-	ipick = USENTENCEG_Pick(isentenceg, name);
-	if (ipick >= 0 && name[0])
-		EMIT_SOUND_DYN(entity, CHAN_VOICE, name, volume, attenuation, flags, pitch);
-
-	return ipick;
+	return CServer_SoundEngine::GetSoundEngine()->PlaySentenceGroup(
+		entity, szgroupname, volume, attenuation, flags, pitch, -1 );
 }
 
 // play sentences in sequential order from sentence group.  Reset after last sentence.

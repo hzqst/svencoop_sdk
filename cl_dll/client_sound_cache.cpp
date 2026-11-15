@@ -1,3 +1,5 @@
+#include <fmodex/fmod_errors.h>
+
 #include "extdll.h"
 #include "hud_iface.h"
 #include "client_support.h"

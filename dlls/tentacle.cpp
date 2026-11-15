@@ -256,8 +256,8 @@ extern cvar_t sk_tentacle;
 
 float CTentacle::GetPointsForDamage( float flDamage )
 {
-	return (double) ( pev->max_health / sk_tentacle.value ) * 0.5
-	       * (double) ( flDamage / pev->max_health );
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return (double) ( pev->max_health / sk_tentacle.value ) * 0.5 * (double) ( flDamage / pev->max_health );
 }
 
 //

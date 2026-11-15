@@ -69,6 +69,7 @@ extern cvar_t sk_blkopsosprey;
 
 float COspreyBlackOps::GetPointsForDamage( float flDamage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return ( pev->max_health / sk_blkopsosprey.value ) * 40.0f * ( flDamage / pev->max_health );
 }
 
@@ -801,6 +802,11 @@ void COspreyBlackOps::KeyValue( KeyValueData *pkvd )
 void COspreyBlackOps::OnDestroy( void )
 {
 	CBaseMonster::OnDestroy();
+	STOP_SOUND( edict(), CHAN_STATIC, "apache/ap_rotor4.wav" );
+}
+
+void COspreyBlackOps::UpdateOnRemove( void )
+{
 	STOP_SOUND( edict(), CHAN_STATIC, "apache/ap_rotor4.wav" );
 }
 

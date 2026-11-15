@@ -34,6 +34,7 @@
 
 #include "schedule.h"
 #include "scripted.h"
+#include "server_sound.h"
 #include "defaultai.h"
 
 
@@ -111,7 +112,6 @@ TYPEDESCRIPTION	CCineMonster::m_SaveData[] =
 	DEFINE_FIELD( CCineMonster, m_fMoveTo, FIELD_INTEGER ),
 	DEFINE_FIELD( CCineMonster, m_flRepeat, FIELD_FLOAT ),
 	DEFINE_FIELD( CCineMonster, m_flRadius, FIELD_FLOAT ),
-	DEFINE_FIELD( CCineMonster, m_flMoveToRadius, FIELD_FLOAT ),
 
 	DEFINE_FIELD( CCineMonster, m_iDelay, FIELD_INTEGER ),
 	DEFINE_FIELD( CCineMonster, m_startTime, FIELD_TIME ),
@@ -120,7 +120,7 @@ TYPEDESCRIPTION	CCineMonster::m_SaveData[] =
 	DEFINE_FIELD( CCineMonster,	m_saved_solid, FIELD_INTEGER ),
 	DEFINE_FIELD( CCineMonster, m_saved_effects, FIELD_INTEGER ),
 	DEFINE_FIELD( CCineMonster, m_iFinishSchedule, FIELD_INTEGER ),
-	DEFINE_FIELD( CCineMonster, m_interruptable, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CCineMonster, m_interruptable, FIELD_CHARACTER ),
 };
 
 
@@ -343,7 +343,7 @@ void CCineMonster :: PossessEntity( void )
 		}
 #endif
 
-		pTarget->m_pGoalEnt = this;
+		pTarget->m_hGoalEnt = this;
 		pTarget->m_pCine = this;
 		pTarget->m_hTargetEnt = this;
 		pTarget->m_flMoveToRadius = m_flMoveToRadius;
@@ -415,7 +415,7 @@ void CCineAI :: PossessEntity( void )
 			return;
 		}
 
-		pTarget->m_pGoalEnt = this;
+		pTarget->m_hGoalEnt = this;
 		pTarget->m_pCine = this;
 		pTarget->m_hTargetEnt = this;
 		pTarget->m_fInAIScript = true;
@@ -835,7 +835,7 @@ BOOL CBaseMonster :: CineCleanup( )
 		pev->solid = SOLID_SLIDEBOX;
 	}
 	m_pCine = NULL;
-	m_pGoalEnt = NULL;
+	m_hGoalEnt = NULL;
 	if (pev->deadflag == DEAD_DYING)
 	{
 		// last frame of death animation?
@@ -966,6 +966,7 @@ class CScriptedSentence : public CBaseToggle
 {
 public:
 	void Spawn( void );
+	void Precache( void );
 	void KeyValue( KeyValueData *pkvd );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void EXPORT FindThink( void );
@@ -990,7 +991,7 @@ private:
 	float	m_flRepeat;	// repeat rate
 	float	m_flAttenuation;
 	float	m_flVolume;
-	BOOL	m_active;
+	bool	m_active;
 	int		m_iszListener;	// name of entity to look at while talking
 };
 
@@ -1008,7 +1009,7 @@ TYPEDESCRIPTION	CScriptedSentence::m_SaveData[] =
 	DEFINE_FIELD( CScriptedSentence, m_flRepeat, FIELD_FLOAT ),
 	DEFINE_FIELD( CScriptedSentence, m_flAttenuation, FIELD_FLOAT ),
 	DEFINE_FIELD( CScriptedSentence, m_flVolume, FIELD_FLOAT ),
-	DEFINE_FIELD( CScriptedSentence, m_active, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CScriptedSentence, m_active, FIELD_CHARACTER ),
 	DEFINE_FIELD( CScriptedSentence, m_iszListener, FIELD_STRING ),
 };
 
@@ -1074,8 +1075,18 @@ void CScriptedSentence :: Use( CBaseEntity *pActivator, CBaseEntity *pCaller, US
 }
 
 
+void CScriptedSentence::Precache( void )
+{
+	const char *sentence = STRING( m_iszSentence );
+
+	if ( *sentence == '+' )
+		CServer_SoundEngine::GetSoundEngine()->PrecacheSound( sentence + 1 );
+}
+
 void CScriptedSentence :: Spawn( void )
 {
+	Precache();
+
 	pev->solid = SOLID_NOT;
 	
 	m_active = TRUE;

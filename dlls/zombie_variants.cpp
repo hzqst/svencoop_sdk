@@ -301,6 +301,7 @@ void CZombieBarney::TraceAttack( entvars_t *attacker, float damage, Vector direc
 
 float CZombieBarney::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float points = pev->max_health / sk_zombie_barney_health.value;
 
 	points *= 2.0f;
@@ -477,6 +478,7 @@ void CZombieSoldier::TraceAttack( entvars_t *attacker, float damage, Vector dire
 
 float CZombieSoldier::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float points = pev->max_health / sk_zombie_soldier_health.value;
 
 	points *= 3.0f;

@@ -142,8 +142,8 @@ CASHook g_PlayerPostThinkHook( 1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Pla
                                "CBasePlayer@", scriptHookArguments[19] );
 CASHook g_GetPlayerSpawnSpotHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "GetPlayerSpawnSpot",
                                         "CBasePlayer@ pPlayer, CBaseEntity@& out ppEntSpawnSpot", scriptHookArguments[20]);
-static CASHook g_PlayerRevivedHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerRevived",
-                                   "CBasePlayer@ pPlayer", scriptHookArguments[21]);
+CASHook g_PlayerRevivedHook( 1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerRevived",
+                           "CBasePlayer@ pPlayer", scriptHookArguments[21] );
 static CASHook g_PlayerDecalHook(1 << DllType::SERVER, 2, "Player", "PlayerDecal",
                                  "CBasePlayer@, const TraceResult& in", scriptHookArguments[22]);
 static CASHook g_PlayerPreDecalHook(1 << DllType::SERVER, 2, "Player", "PlayerPreDecal",

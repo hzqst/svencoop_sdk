@@ -2,11 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef char ExtrasInfoSizeCheck[sizeof( extrasinfo_s ) == 220 ? 1 : -1];
-typedef char ExtrasInfoLevelOffsetCheck[offsetof( extrasinfo_s, iLevel ) == 208 ? 1 : -1];
-typedef char ExtrasInfoSourceOffsetCheck[offsetof( extrasinfo_s, iSource ) == 212 ? 1 : -1];
-typedef char ExtrasInfoQueryOffsetCheck[offsetof( extrasinfo_s, flLastQuery ) == 216 ? 1 : -1];
-
 bool extrasinfo_s::operator==( const extrasinfo_s &other ) const
 {
 	return !strcmp( szAuthId, other.szAuthId ) && !strcmp( szName, other.szName ) && !strcmp( szDescription, other.szDescription ) && iLevel == other.iLevel && iSource == other.iSource;

@@ -1,3 +1,5 @@
+#include <fmodex/fmod_errors.h>
+
 #include "hud.h"
 #include "cl_util.h"
 #include "client_media.h"

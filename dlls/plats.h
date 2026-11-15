@@ -2,6 +2,7 @@
 #define PLATS_H
 
 #include "doors.h"
+#include "TypedEntityHandle.h"
 #include "sound_message.h"
 
 #define SF_PLAT_TOGGLE		0x0001
@@ -24,6 +25,8 @@ public:
 	BYTE	m_fMoveSoundLoop;	// force the moving sound to loop
 	BYTE	m_bStopSnd;			// sound a plat makes when it stops
 	float	m_volume;			// Sound volume
+
+	CStartStopVars m_StartStopVars;
 
 	int		MoveSoundFlags( void )
 	{
@@ -63,12 +66,11 @@ public:
 	virtual int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
-	entvars_t	*m_pevCurrentTarget;
-	int			m_sounds;
-	BOOL		m_activated;
-	BOOL		m_bRandomNextTarget;
-	int			m_iObeyTriggerMode;
-	CStartStopVars	m_StartStopVars;
+	CEntityHandle<CBaseEntity> m_hCurrentTarget;
+
+	bool	m_activated;
+	bool	m_bRandomNextTarget;
+	int		m_iObeyTriggerMode;
 };
 
 #endif

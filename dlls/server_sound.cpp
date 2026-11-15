@@ -59,7 +59,7 @@ void CServer_SoundEngine::PlaySound(edict_t *entity, int channel, char *sample,
 	if (volume < 0 || volume > 1)
 	{
 		ALERT(at_console, "[Sound Engine] - PlaySound(): volume = %f  (range = 0 to 1 float)\n", volume);
-		volume = min(1.0f, max(0.0f, volume));
+		volume = V_min(1.0f, V_max(0.0f, volume));
 	}
 
 	if (!(attenuation < 0 || attenuation > 4) || (flags & SOUNDMSG_RADIUS))
@@ -73,7 +73,7 @@ void CServer_SoundEngine::PlaySound(edict_t *entity, int channel, char *sample,
 	else
 	{
 		ALERT(at_console, "[Sound Engine] - PlaySound(): attenuation = %f  (range = 0 to 4 float)\n", attenuation);
-		attenuation = min(4.0f, max(0.0f, attenuation));
+		attenuation = V_min(4.0f, V_max(0.0f, attenuation));
 	}
 
 	if ((unsigned int)channel > 15)
@@ -174,7 +174,7 @@ void CServer_SoundEngine::PlaySound(edict_t *entity, int channel, char *sample,
 	}
 	else if (messageFlags & SOUNDMSG_ATTENUATION)
 	{
-		WRITE_BYTE((int)min(255.0f, max(0.0f, attenuation * 64)));
+		WRITE_BYTE((int)V_min(255.0f, V_max(0.0f, attenuation * 64)));
 	}
 
 	if (messageFlags & SOUNDMSG_ORIGIN)

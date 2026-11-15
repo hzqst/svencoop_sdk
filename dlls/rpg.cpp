@@ -539,7 +539,7 @@ void CRpg::SecondaryAttack( void )
 
 void CRpg::WeaponIdle( void )
 {
-	if ( m_hPlayer && !(CBaseEntity *) m_hPlayer->m_pTank
+	if ( m_hPlayer && !(CBaseEntity *) m_hPlayer->m_hTank
 		&& !CClassicMode::GetInstance()->IsEnabled() )
 		m_hPlayer->pev->weaponmodel = MAKE_STRING( GetP_Model( "models/p_rpg.mdl" ) );
 

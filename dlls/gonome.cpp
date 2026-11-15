@@ -51,7 +51,7 @@ IMPLEMENT_SAVERESTORE( CGonomeSpit, CBaseEntity );
 
 TYPEDESCRIPTION CGonome::m_SaveData[] =
 {
-	DEFINE_FIELD( CGonome, m_fCanThreatDisplay, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CGonome, m_fCanThreatDisplay, FIELD_CHARACTER ),
 	DEFINE_FIELD( CGonome, m_flLastHurtTime, FIELD_TIME ),
 	DEFINE_FIELD( CGonome, m_flNextSpitTime, FIELD_TIME )
 };
@@ -705,6 +705,7 @@ int CGonome::TakeDamage( entvars_t *inflictor, entvars_t *attacker, float damage
 
 float CGonome::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return pev->max_health / sk_gonome_health.value * 10 * ( damage / pev->max_health );
 }
 
@@ -745,6 +746,6 @@ void CGonomeDead::KeyValue( KeyValueData *data )
 
 	unsigned int pose = strtoul( data->szValue, NULL, 10 );
 
-	m_iPose = min( pose, 3u );
+	m_iPose = V_min( pose, 3u );
 	data->fHandled = TRUE;
 }

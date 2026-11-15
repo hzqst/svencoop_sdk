@@ -182,11 +182,10 @@ int CStukabat::Classify( void )
 
 float CStukabat::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float points = pev->max_health / sk_stukabat.value;
 
-	points *= 0.5f;
-
-	return points * ( damage / pev->max_health );
+	return (float) ( points * 0.5 * ( damage / pev->max_health ) );
 }
 
 void CStukabat::SetYawSpeed( void )
@@ -655,7 +654,7 @@ void CStukabat::Move( float interval )
 	Vector delta = m_Route[m_iRouteIndex].vecLocation - pev->origin;
 	Vector direction = delta.Normalize();
 	float distance = delta.Length();
-	float checkDistance = min( distance, 200.0f );
+	float checkDistance = V_min( distance, 200.0f );
 	int routeType = m_Route[m_iRouteIndex].iType & ~bits_MF_NOT_TO_MASK;
 	CBaseEntity *target = NULL;
 
@@ -820,7 +819,7 @@ Vector CStukabat::DoProbe( const Vector &probe )
 
 	if ( trace.fAllSolid || trace.flFraction < 0.99 )
 	{
-		trace.flFraction = max( 0.0f, min( 1.0f, trace.flFraction ) );
+		trace.flFraction = V_max( 0.0f, V_min( 1.0f, trace.flFraction ) );
 
 		if ( fraction > trace.flFraction )
 		{
@@ -899,7 +898,7 @@ void CStukabat::Fly( void )
 		angles.x -= 360;
 
 	pev->angles.x = UTIL_Approach( angles.x, pev->angles.x, 50 * m_flFrameTime );
-	pev->angles.x = max( -80.0f, min( 80.0f, pev->angles.x ) );
+	pev->angles.x = V_max( -80.0f, V_min( 80.0f, pev->angles.x ) );
 
 	float turn = 360;
 
@@ -938,5 +937,5 @@ void CStukabat::Fly( void )
 	else
 		pev->angles.z += turn < 0 ? -speed : speed;
 
-	pev->angles.z = max( -20.0f, min( 20.0f, pev->angles.z ) );
+	pev->angles.z = V_max( -20.0f, V_min( 20.0f, pev->angles.z ) );
 }

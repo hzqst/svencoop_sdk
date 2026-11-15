@@ -4,7 +4,7 @@
 #include "CASBaseClass.h"
 #include "CASFileSystemUtils.h"
 #include "CString.h"
-#include "filesystem.h"
+#include "FileSystem.h"
 
 class CASBLOB;
 class CASDirectory;

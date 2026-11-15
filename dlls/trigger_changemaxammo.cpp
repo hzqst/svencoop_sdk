@@ -50,7 +50,7 @@ void CTriggerChangeMaxAmmo::Add_s::operator()( CBasePlayer *player ) const
 
 void CTriggerChangeMaxAmmo::Subtract_s::operator()( CBasePlayer *player ) const
 {
-	player->SetMaxAmmo( index, max( player->GetMaxAmmo( index ) - value, 0 ) );
+	player->SetMaxAmmo( index, V_max( player->GetMaxAmmo( index ) - value, 0 ) );
 }
 
 template <class Operation>

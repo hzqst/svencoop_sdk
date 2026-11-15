@@ -67,6 +67,7 @@ extern CASHook g_CanPlayerUseReservedSlotHook;
 extern CASHook g_ClientConnectedHook;
 extern CASHook g_ClientSayHook;
 extern CASHook g_PlayerSpawnHook;
+extern CASHook g_PlayerRevivedHook;
 extern CASHook g_MonsterKilledHook;
 extern CASHook g_MonsterTakeDamageHook;
 extern CASHook g_PlayerTakeDamageHook;

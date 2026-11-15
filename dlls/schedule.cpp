@@ -404,12 +404,12 @@ void CBaseMonster :: RunTask ( Task_t *pTask )
 				break;
 			}
 
-			CBaseEntity *enemy = TankTaskEntity( m_hEnemy );
+			CBaseEntity *enemy = TankTaskEntity( m_hEnemy.m_Handle );
 
 			if ( !enemy || !enemy->IsAlive() || !FVisible( enemy, true ) )
 			{
 				m_hEnemy = BestVisibleEnemy();
-				enemy = TankTaskEntity( m_hEnemy );
+				enemy = TankTaskEntity( m_hEnemy.m_Handle );
 			}
 
 			if ( !enemy )
@@ -1134,12 +1134,12 @@ void CBaseMonster :: StartTask ( Task_t *pTask )
 				break;
 			}
 
-			CBaseEntity *enemy = TankTaskEntity( m_hEnemy );
+			CBaseEntity *enemy = TankTaskEntity( m_hEnemy.m_Handle );
 
 			if ( !enemy || !enemy->IsAlive() || !FVisible( enemy, true ) )
 			{
 				m_hEnemy = BestVisibleEnemy();
-				enemy = TankTaskEntity( m_hEnemy );
+				enemy = TankTaskEntity( m_hEnemy.m_Handle );
 			}
 
 			if ( !enemy )

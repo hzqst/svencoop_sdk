@@ -233,9 +233,6 @@ LINK_ENTITY_TO_CLASS( trigger_relay, CTriggerRelay );
 TYPEDESCRIPTION	CTriggerRelay::m_SaveData[] = 
 {
 	DEFINE_FIELD( CTriggerRelay, triggerType, FIELD_INTEGER ),
-	DEFINE_FIELD( CTriggerRelay, m_flTriggerValue, FIELD_FLOAT ),
-	DEFINE_FIELD( CTriggerRelay, m_flDelayBeforeReset, FIELD_FLOAT ),
-	DEFINE_FIELD( CTriggerRelay, m_flNextFireTime, FIELD_TIME ),
 };
 
 IMPLEMENT_SAVERESTORE(CTriggerRelay,CBaseDelay);
@@ -343,7 +340,7 @@ public:
 	float	m_startTime;// Time we started firing
 	int		m_iTargetName	[ MAX_MULTI_TARGETS ];// list if indexes into global string array
 	float	m_flTargetDelay [ MAX_MULTI_TARGETS ];// delay (in seconds) from time of manager fire to target fire
-	int		m_iTargetUseType [ MAX_MULTI_TARGETS ];// trigger state sent to each target
+	int		m_flTargetAction [ MAX_MULTI_TARGETS ];// trigger state sent to each target
 private:
 	inline BOOL IsClone( void ) { return (pev->spawnflags & SF_MULTIMAN_CLONE) ? TRUE : FALSE; }
 	inline BOOL ShouldClone( void ) 
@@ -366,7 +363,7 @@ TYPEDESCRIPTION	CMultiManager::m_SaveData[] =
 	DEFINE_FIELD( CMultiManager, m_startTime, FIELD_TIME ),
 	DEFINE_ARRAY( CMultiManager, m_iTargetName, FIELD_STRING, MAX_MULTI_TARGETS ),
 	DEFINE_ARRAY( CMultiManager, m_flTargetDelay, FIELD_FLOAT, MAX_MULTI_TARGETS ),
-	DEFINE_ARRAY( CMultiManager, m_iTargetUseType, FIELD_INTEGER, MAX_MULTI_TARGETS ),
+	DEFINE_ARRAY( CMultiManager, m_flTargetAction, FIELD_INTEGER, MAX_MULTI_TARGETS ),
 };
 
 IMPLEMENT_SAVERESTORE(CMultiManager,CBaseToggle);
@@ -413,23 +410,23 @@ void CMultiManager :: KeyValue( KeyValueData *pkvd )
 			switch ( atoi( szUseType ) )
 			{
 			case 0:
-				m_iTargetUseType [ m_cTargets ] = USE_OFF;
+				m_flTargetAction [ m_cTargets ] = USE_OFF;
 				break;
 			case 1:
-				m_iTargetUseType [ m_cTargets ] = USE_ON;
+				m_flTargetAction [ m_cTargets ] = USE_ON;
 				break;
 			case 2:
-				m_iTargetUseType [ m_cTargets ] = USE_KILL;
+				m_flTargetAction [ m_cTargets ] = USE_KILL;
 				break;
 			default:
-				m_iTargetUseType [ m_cTargets ] = USE_TOGGLE;
+				m_flTargetAction [ m_cTargets ] = USE_TOGGLE;
 				break;
 			}
 		}
 		else
 		{
 			m_flTargetDelay [ m_cTargets ] = atof( pkvd->szValue );
-			m_iTargetUseType [ m_cTargets ] = USE_TOGGLE;
+			m_flTargetAction [ m_cTargets ] = USE_TOGGLE;
 		}
 
 		m_cTargets++;
@@ -458,13 +455,13 @@ void CMultiManager :: Spawn( void )
 				// Swap out of order elements
 				int name = m_iTargetName[i];
 				float delay = m_flTargetDelay[i];
-				int useType = m_iTargetUseType[i];
+				int useType = m_flTargetAction[i];
 				m_iTargetName[i] = m_iTargetName[i-1];
 				m_flTargetDelay[i] = m_flTargetDelay[i-1];
-				m_iTargetUseType[i] = m_iTargetUseType[i-1];
+				m_flTargetAction[i] = m_flTargetAction[i-1];
 				m_iTargetName[i-1] = name;
 				m_flTargetDelay[i-1] = delay;
-				m_iTargetUseType[i-1] = useType;
+				m_flTargetAction[i-1] = useType;
 				swapped = 1;
 			}
 		}
@@ -491,7 +488,7 @@ void CMultiManager :: ManagerThink ( void )
 	time = gpGlobals->time - m_startTime;
 	while ( m_index < m_cTargets && m_flTargetDelay[ m_index ] <= time )
 	{
-		if ( m_iTargetUseType[ m_index ] == USE_KILL )
+		if ( m_flTargetAction[ m_index ] == USE_KILL )
 		{
 			edict_t *pentTarget = NULL;
 
@@ -505,7 +502,7 @@ void CMultiManager :: ManagerThink ( void )
 		}
 		else
 		{
-			FireTargets( STRING( m_iTargetName[ m_index ] ), m_hActivator, this, (USE_TYPE) m_iTargetUseType[ m_index ], 0 );
+			FireTargets( STRING( m_iTargetName[ m_index ] ), m_hActivator, this, (USE_TYPE) m_flTargetAction[ m_index ], 0 );
 		}
 
 		m_index++;
@@ -537,7 +534,7 @@ CMultiManager *CMultiManager::Clone( void )
 	pMulti->m_cTargets = m_cTargets;
 	memcpy( pMulti->m_iTargetName, m_iTargetName, sizeof( m_iTargetName ) );
 	memcpy( pMulti->m_flTargetDelay, m_flTargetDelay, sizeof( m_flTargetDelay ) );
-	memcpy( pMulti->m_iTargetUseType, m_iTargetUseType, sizeof( m_iTargetUseType ) );
+	memcpy( pMulti->m_flTargetAction, m_flTargetAction, sizeof( m_flTargetAction ) );
 
 	return pMulti;
 }
@@ -1711,7 +1708,6 @@ TYPEDESCRIPTION	CChangeLevel::m_SaveData[] =
 	DEFINE_ARRAY( CChangeLevel, m_szLandmarkName, FIELD_CHARACTER, cchMapNameMost ),
 	DEFINE_FIELD( CChangeLevel, m_changeTarget, FIELD_STRING ),
 	DEFINE_FIELD( CChangeLevel, m_changeTargetDelay, FIELD_FLOAT ),
-	DEFINE_FIELD( CChangeLevel, m_flPercentOfPlayers, FIELD_FLOAT ),
 };
 
 IMPLEMENT_SAVERESTORE(CChangeLevel,CBaseTrigger);
@@ -2156,6 +2152,12 @@ void CLadder::ToggleUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 class CTriggerPush : public CBaseTrigger
 {
 public:
+	void OnCreate( void )
+	{
+		CBaseTrigger::OnCreate();
+		m_iPushMode = TRIGGER_PUSH_MODE_BASEVELOCITY;
+	}
+
 	void OnSetOriginByMap( void )
 	{
 		m_vecSavedAngles = pev->angles;
@@ -2689,7 +2691,7 @@ void CTriggerChangeTarget::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, U
 
 		if (pMonster)
 		{
-			pMonster->m_pGoalEnt = NULL;
+			pMonster->m_hGoalEnt = NULL;
 		}
 
 		if ( FClassnameIs( pTarget->pev, "path_track" ) )

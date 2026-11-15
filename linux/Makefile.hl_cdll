@@ -17,9 +17,9 @@ HL1_SERVER_OBJ_DIR=$(HL1_OBJ_DIR)/server
 PM_SHARED_OBJ_DIR=$(HL1_OBJ_DIR)/pm_shared
 CRYPTOPP_OBJ_DIR=$(HL1_OBJ_DIR)/cryptopp
 
-CFLAGS=$(filter-out -fno-exceptions,$(BASE_CFLAGS)) -fexceptions $(ARCH_CFLAGS) -DDISABLE_VEC_ORIGIN -DCLIENT_DLL -DCLIENT_WEAPONS -DHL_DLL -I/usr/include/malloc -D_snwprintf=swprintf
+CFLAGS=$(filter-out -fno-exceptions,$(BASE_CFLAGS)) -fexceptions $(ARCH_CFLAGS) -fPIC -DDISABLE_VEC_ORIGIN -DCLIENT_DLL -DCLIENT_WEAPONS -DHL_DLL -I/usr/include/malloc -D_snwprintf=swprintf
 		 
-INCLUDEDIRS=-I$(HL_SRC_DIR) -I../dlls -I../tfc -I$(COMMON_SRC_DIR) -I$(PUBLIC_SRC_DIR) -I../pm_shared -I../engine -I../utils/vgui/include -I ../game_shared -I../external -I../external/fmodex/include -I../external/discord-rpc/include
+INCLUDEDIRS=-I$(HL_SRC_DIR) -I../dlls -I../tfc -I$(COMMON_SRC_DIR) -I$(PUBLIC_SRC_DIR) -I../pm_shared -I../engine -I../utils/vgui/include -I ../game_shared -I../external -I../external/discord-rpc/include
 
 ifeq ($(OS),Darwin)
 LDFLAGS=$(SHLIBLDFLAGS) $(CPP_LIB) -ldiscord-rpc -framework Carbon -framework OpenGL $(CFG)/vgui.dylib -L. -lSDL2-2.0.0
@@ -42,7 +42,6 @@ HL1_OBJS = \
 	$(HL1_OBJ_DIR)/ev_sven_weapons.o \
 	$(HL1_OBJ_DIR)/ev_beams.o \
 	$(HL1_OBJ_DIR)/ClientDLL.o \
-	$(HL1_OBJ_DIR)/client_fmod.o \
 	$(HL1_OBJ_DIR)/client_media.o \
 	$(HL1_OBJ_DIR)/client_sound.o \
 	$(HL1_OBJ_DIR)/client_sound_cache.o \
@@ -233,10 +232,16 @@ CRYPTOPP_OBJS = \
 	$(CRYPTOPP_OBJ_DIR)/sse_simd.o \
 	$(CRYPTOPP_OBJ_DIR)/strciphr.o
 
+# Targets
+ALL_CLIENT_OBJS=$(HL1_OBJS) $(PUBLIC_OBJS) $(COMMON_OBJS) $(GAME_SHARED_OBJS) $(DLL_OBJS) $(PM_SHARED_OBJS) $(CRYPTOPP_OBJS)
+CLIENT_LINK_FLAGS=$(LDFLAGS) -Wl,--no-undefined -Wl,-rpath,'$$ORIGIN' -lm $(CPP_LIB)
+
 all: client.$(SHLIBEXT)
 
-client.$(SHLIBEXT): $(HL1_OBJS) $(PUBLIC_OBJS) $(COMMON_OBJS) $(GAME_SHARED_OBJS) $(DLL_OBJS) $(PM_SHARED_OBJS) $(CRYPTOPP_OBJS)
-	$(CLINK) -o $(BUILD_DIR)/$@ $(HL1_OBJS) $(PUBLIC_OBJS) $(COMMON_OBJS) $(GAME_SHARED_OBJS) $(DLL_OBJS) $(PM_SHARED_OBJS) $(CRYPTOPP_OBJS) $(LDFLAGS) $(CPP_LIB)
+client.$(SHLIBEXT): $(ALL_CLIENT_OBJS)
+	$(CLINK) -o $(BUILD_DIR)/$@ $(ALL_CLIENT_OBJS) $(CLIENT_LINK_FLAGS)
+
+$(ALL_CLIENT_OBJS): $(lastword $(MAKEFILE_LIST))
 
 $(HL1_OBJ_DIR):
 	mkdir -p $(HL1_OBJ_DIR)
@@ -300,4 +305,4 @@ $(CRYPTOPP_OBJ_DIR)/%.o: $(CRYPTOPP_SRC_DIR)/%.cpp | $(CRYPTOPP_OBJ_DIR)
 
 clean:
 	-rm -rf $(HL1_OBJ_DIR)
-	-rm -f client.$(SHLIBEXT)
+	-rm -f $(BUILD_DIR)/client.$(SHLIBEXT)

@@ -5,6 +5,7 @@
 #include "scripted.h"
 #include "defaultai.h"
 #include "scriptevent.h"
+#include "soundent.h"
 
 float CSquadTalkMonster::g_talkWaitTime = 0;
 float CSquadTalkMonster::g_talkWaitTimeEvil = 0;
@@ -33,10 +34,101 @@ TYPEDESCRIPTION CSquadTalkMonster::m_SaveData[] = {
 
 IMPLEMENT_SAVERESTORE( CSquadTalkMonster, CSquadMonster );
 
-extern Schedule_t slIdleResponse[];
-extern Schedule_t slIdleSpeak[];
-extern Schedule_t slIdleHello[];
-extern Schedule_t slIdleSpeakWait[];
+static Task_t tlSquadTalkIdleResponse[] = {
+	{ TASK_SET_ACTIVITY, (float) ACT_IDLE },
+	{ TASK_WAIT, (float) 0.5 },
+	{ TASK_TLK_EYECONTACT, (float) 0 },
+	{ TASK_TLK_RESPOND, (float) 0 },
+	{ TASK_TLK_IDEALYAW, (float) 0 },
+	{ TASK_FACE_IDEAL, (float) 0 },
+	{ TASK_SET_ACTIVITY, (float) ACT_IDLE },
+	{ TASK_TLK_EYECONTACT, (float) 0 },
+};
+
+static Schedule_t slSquadTalkIdleResponse[] = {
+	{ tlSquadTalkIdleResponse,
+	  ARRAYSIZE( tlSquadTalkIdleResponse ),
+	  bits_COND_NEW_ENEMY |
+	      bits_COND_LIGHT_DAMAGE |
+	      bits_COND_HEAVY_DAMAGE |
+	      bits_COND_HEAR_SOUND,
+	  bits_SOUND_DANGER,
+	  "Idle Response"
+
+	},
+};
+
+static Task_t tlSquadTalkIdleSpeak[] = {
+	{ TASK_TLK_SPEAK, (float) 0 },
+	{ TASK_TLK_IDEALYAW, (float) 0 },
+	{ TASK_FACE_IDEAL, (float) 0 },
+	{ TASK_SET_ACTIVITY, (float) ACT_IDLE },
+	{ TASK_TLK_EYECONTACT, (float) 0 },
+	{ TASK_WAIT_RANDOM, (float) 0.5 },
+};
+
+static Schedule_t slSquadTalkIdleSpeak[] = {
+	{ tlSquadTalkIdleSpeak,
+	  ARRAYSIZE( tlSquadTalkIdleSpeak ),
+	  bits_COND_NEW_ENEMY |
+	      bits_COND_CLIENT_PUSH |
+	      bits_COND_LIGHT_DAMAGE |
+	      bits_COND_HEAVY_DAMAGE |
+	      bits_COND_HEAR_SOUND,
+	  bits_SOUND_DANGER,
+	  "Idle Speak" },
+};
+
+static Task_t tlSquadTalkIdleSpeakWait[] = {
+	{ TASK_SET_ACTIVITY, (float) ACT_IDLE },
+	{ TASK_TLK_SPEAK, (float) 0 },
+	{ TASK_TLK_EYECONTACT, (float) 0 },
+	{ TASK_WAIT, (float) 2 },
+};
+
+static Schedule_t slSquadTalkIdleSpeakWait[] = {
+	{ tlSquadTalkIdleSpeakWait,
+	  ARRAYSIZE( tlSquadTalkIdleSpeakWait ),
+	  bits_COND_NEW_ENEMY |
+	      bits_COND_CLIENT_PUSH |
+	      bits_COND_LIGHT_DAMAGE |
+	      bits_COND_HEAVY_DAMAGE |
+	      bits_COND_HEAR_SOUND,
+	  bits_SOUND_DANGER,
+	  "Idle Speak Wait" },
+};
+
+static Task_t tlSquadTalkIdleHello[] = {
+	{ TASK_SET_ACTIVITY, (float) ACT_IDLE },
+	{ TASK_TLK_HELLO, (float) 0 },
+	{ TASK_TLK_EYECONTACT, (float) 0 },
+	{ TASK_WAIT, (float) 0.5 },
+	{ TASK_TLK_HELLO, (float) 0 },
+	{ TASK_TLK_EYECONTACT, (float) 0 },
+	{ TASK_WAIT, (float) 0.5 },
+	{ TASK_TLK_HELLO, (float) 0 },
+	{ TASK_TLK_EYECONTACT, (float) 0 },
+	{ TASK_WAIT, (float) 0.5 },
+	{ TASK_TLK_HELLO, (float) 0 },
+	{ TASK_TLK_EYECONTACT, (float) 0 },
+	{ TASK_WAIT, (float) 0.5 },
+
+};
+
+static Schedule_t slSquadTalkIdleHello[] = {
+	{ tlSquadTalkIdleHello,
+	  ARRAYSIZE( tlSquadTalkIdleHello ),
+	  bits_COND_NEW_ENEMY |
+	      bits_COND_CLIENT_PUSH |
+	      bits_COND_LIGHT_DAMAGE |
+	      bits_COND_HEAVY_DAMAGE |
+	      bits_COND_HEAR_SOUND,
+
+	  bits_SOUND_COMBAT |
+	      bits_SOUND_DANGER,
+	  "Idle Hello" },
+};
+
 extern Schedule_t slIdleStopShooting[];
 extern Schedule_t slMoveAway[];
 extern Schedule_t slMoveAwayFollow[];
@@ -45,10 +137,10 @@ extern Schedule_t slTlkIdleWatchClient[];
 extern Schedule_t slTlkIdleEyecontact[];
 
 DEFINE_CUSTOM_SCHEDULES( CSquadTalkMonster ){
-	slIdleResponse,
-	slIdleSpeak,
-	slIdleHello,
-	slIdleSpeakWait,
+	slSquadTalkIdleResponse,
+	slSquadTalkIdleSpeak,
+	slSquadTalkIdleHello,
+	slSquadTalkIdleSpeakWait,
 	slIdleStopShooting,
 	slMoveAway,
 	slMoveAwayFollow,
@@ -604,9 +696,8 @@ void CSquadTalkMonster::SetAnswerQuestion( CBaseMonster *pSpeaker )
 
 	if ( !m_pCine )
 	{
-		extern Schedule_t slIdleResponse[];
 
-		ChangeSchedule( slIdleResponse );
+		ChangeSchedule( slSquadTalkIdleResponse );
 	}
 
 	m_hTalkTarget = pSpeaker;
@@ -688,7 +779,7 @@ Schedule_t *CSquadTalkMonster::GetScheduleOfType( int Type )
 			return slMoveAwayFail;
 
 		case SCHED_TARGET_FACE:
-			return RANDOM_LONG( 0, 99 ) < 2 ? slIdleSpeakWait : slIdleStand;
+			return RANDOM_LONG( 0, 99 ) < 2 ? slSquadTalkIdleSpeakWait : slIdleStand;
 
 		case SCHED_IDLE_STAND:
 			if ( !FBitSet( m_bitsSaid, bit_saidHelloPlayer ) )
@@ -697,7 +788,7 @@ Schedule_t *CSquadTalkMonster::GetScheduleOfType( int Type )
 					return CBaseMonster::GetScheduleOfType( SCHED_IDLE_STAND );
 
 				if ( Classify() == CLASS_PLAYER_ALLY )
-					return slIdleHello;
+					return slSquadTalkIdleHello;
 			}
 
 			if ( !FBitSet( m_bitsSaid, bit_saidWoundLight ) && pev->health <= pev->max_health * 0.75 )
@@ -715,7 +806,7 @@ Schedule_t *CSquadTalkMonster::GetScheduleOfType( int Type )
 			}
 
 			if ( FOkToSpeak() && RANDOM_LONG( 0, m_nSpeak * 2 ) == 0 )
-				return slIdleSpeak;
+				return slSquadTalkIdleSpeak;
 
 			if ( FCanActiveIdle() )
 				return CBaseMonster::GetScheduleOfType( SCHED_IDLE_STAND );

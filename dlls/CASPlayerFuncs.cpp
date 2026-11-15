@@ -15,7 +15,7 @@
 #include "CASModuleInfo.h"
 #include "CASLog.h"
 #include "CASPlayerFuncs.h"
-#include "filesystem.h"
+#include "FileSystem.h"
 #include <time.h>
 
 CASPlayerFuncs::~CASPlayerFuncs()

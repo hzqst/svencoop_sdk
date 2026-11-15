@@ -576,8 +576,8 @@ extern cvar_t sk_bigmomma_health_factor;
 
 float CBigMomma::GetPointsForDamage( float flDamage )
 {
-	return ( pev->max_health / ( sk_bigmomma_health_factor.value * 150.0f ) ) * 20.0f
-	       * ( flDamage / pev->max_health );
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return ( pev->max_health / ( sk_bigmomma_health_factor.value * 150.0f ) ) * 20.0f * ( flDamage / pev->max_health );
 }
 
 //=========================================================

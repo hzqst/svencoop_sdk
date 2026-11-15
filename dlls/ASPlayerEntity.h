@@ -74,7 +74,7 @@ void RegisterSCScriptBasePlayerEntity( CASDocumentation *documentation, const ch
 	documentation->RegisterObjectProperty( "Train control position", name, "int m_iTrain",
 	                                       asOFFSET( T, m_iTrain ) );
 	documentation->RegisterObjectProperty( "the tank which the player is currently controlling, NULL if no tank", name, "EHandle m_hTank",
-	                                       asOFFSET( T, m_pTank ) );
+	                                       asOFFSET( T, m_hTank ) );
 	documentation->RegisterObjectProperty( "the time at which the player died", name, "float m_fDeadTime",
 	                                       asOFFSET( T, m_fDeadTime ) );
 	documentation->RegisterObjectProperty( "Does this player have the longjump module?", name, "bool m_fLongJump",

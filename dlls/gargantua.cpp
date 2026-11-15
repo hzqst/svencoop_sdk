@@ -322,8 +322,8 @@ extern cvar_t sk_gargantua_health;
 
 float CGargantua::GetPointsForDamage( float flDamage )
 {
-	return ( pev->max_health / sk_gargantua_health.value ) * 25.0f
-	       * ( flDamage / pev->max_health );
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return ( pev->max_health / sk_gargantua_health.value ) * 25.0f * ( flDamage / pev->max_health );
 }
 
 const char *CGargantua::pAttackHitSounds[] = 
@@ -801,7 +801,7 @@ void CGargantua :: PrescheduleThink( void )
 
 	if ( !victim )
 	{
-		m_flThinkInterval = 0.1;
+		m_flThinkDelay = 0.1;
 	}
 	else
 	{
@@ -1284,7 +1284,7 @@ void CGargantua::HandleAnimEvent(MonsterEvent_t *pEvent)
 				{
 					m_hBiteVictim = victim;
 					victim->FBecomeProne( this );
-					m_flThinkInterval = 0;
+					m_flThinkDelay = 0;
 				}
 				else
 					TaskFail();
@@ -1471,14 +1471,14 @@ void CGargantua::StartTask( Task_t *pTask )
 			if ( hit && ( IRelationship( hit ) > R_NO || hit == enemy ) )
 			{
 				TaskComplete();
-				m_flThinkInterval = 0;
+				m_flThinkDelay = 0;
 			}
 			else if ( !hit && enemy && ( enemy->Center() - Center() ).Length() < pev->scale * 112 )
 			{
 				MakeIdealYaw( enemy->Center() );
 				ChangeYaw( (int) pev->yaw_speed );
 				TaskComplete();
-				m_flThinkInterval = 0;
+				m_flThinkDelay = 0;
 			}
 			else
 				TaskFail();

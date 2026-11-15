@@ -3,50 +3,17 @@
 #include "cbase.h"
 #include "effects.h"
 #include "sprite_train.h"
+#include "saverestore.h"
 
 LINK_ENTITY_TO_CLASS( env_spritetrain, CSpriteTrain );
 
-struct SpriteTrainSaveState
-{
-	EHANDLE       m_hCurrentTarget;
-	unsigned char m_activated;
-};
-
 TYPEDESCRIPTION CSpriteTrain::m_SaveData[] =
 {
-	DEFINE_FIELD( SpriteTrainSaveState, m_hCurrentTarget, FIELD_EHANDLE ),
-	DEFINE_FIELD( SpriteTrainSaveState, m_activated, FIELD_CHARACTER ),
+	DEFINE_FIELD( CSpriteTrain, m_hCurrentTarget, FIELD_EHANDLE ),
+	DEFINE_FIELD( CSpriteTrain, m_activated, FIELD_CHARACTER ),
 };
 
-int CSpriteTrain::Save( CSave &save )
-{
-	if ( !CBasePlatTrain::Save( save ) )
-		return 0;
-
-	SpriteTrainSaveState state = {};
-
-	state.m_hCurrentTarget = m_pevCurrentTarget ? CBaseEntity::Instance( m_pevCurrentTarget ) : NULL;
-	state.m_activated = m_activated != FALSE;
-	return save.WriteFields( "CSpriteTrain", &state, m_SaveData, ARRAYSIZE( m_SaveData ) );
-}
-
-int CSpriteTrain::Restore( CRestore &restore )
-{
-	if ( !CBasePlatTrain::Restore( restore ) )
-		return 0;
-
-	SpriteTrainSaveState state = {};
-
-	state.m_hCurrentTarget = m_pevCurrentTarget ? CBaseEntity::Instance( m_pevCurrentTarget ) : NULL;
-	state.m_activated = m_activated != FALSE;
-
-	int result = restore.ReadFields( "CSpriteTrain", &state, m_SaveData, ARRAYSIZE( m_SaveData ) );
-	edict_t *target = state.m_hCurrentTarget.Get();
-
-	m_pevCurrentTarget = target && !target->free && target->pvPrivateData ? VARS( target ) : NULL;
-	m_activated = state.m_activated != 0;
-	return result;
-}
+IMPLEMENT_SAVERESTORE( CSpriteTrain, CBasePlatTrain );
 
 void CSpriteTrain::Spawn( void )
 {

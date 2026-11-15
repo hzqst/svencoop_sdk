@@ -378,7 +378,11 @@ void CBasePlayer::AddPoints( int score, bool bAllowNegativeScore ) { }
 void CBasePlayer::AddPointsToTeam( int score, bool bAllowNegativeScore ) { }
 bool CBasePlayer::IsMoving( void ) { return pev->velocity != g_vecZero; }
 float CBasePlayer::GetLogFrequency( void ) { return 30.0f; }
-float CBasePlayer::GetPointsForDamage( float flDamage ) { return 0 * flDamage; }
+float CBasePlayer::GetPointsForDamage( float flDamage )
+{
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
+	return 0 * flDamage;
+}
 void CBasePlayer::ResetOverriddenPlayerModel( bool restorePreviousModel, bool forceRestore ) { }
 bool CBasePlayer::CanStartNextVote( VOTETYPE type ) { return true; }
 void CBasePlayer::Vote( VOTEINPUT input, const char *text ) { }

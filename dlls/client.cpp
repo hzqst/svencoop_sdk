@@ -1171,7 +1171,7 @@ void SetupVisibility( edict_t *pViewEntity, edict_t *pClient, unsigned char **pv
 		pView = pViewEntity;
 	}
 
-	if ( client && client->pev->iuser1 )
+	if ( client && client->pev->iuser2 )
 	{
 		CBasePlayer *target = client->GetObserver()->GetObserverTarget();
 

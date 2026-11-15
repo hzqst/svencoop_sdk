@@ -15,6 +15,8 @@
 #ifndef EFFECTS_H
 #define EFFECTS_H
 
+#include "TypedEntityHandle.h"
+
 #define SF_BEAM_STARTON			0x0001
 #define SF_BEAM_TOGGLE			0x0002
 #define SF_BEAM_RANDOM			0x0004
@@ -216,13 +218,13 @@ public:
 	virtual int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
-	CSprite	*m_pSprite;
-	int		m_iszSpriteName;
-	int		m_iFrameStart;
-	Vector  m_firePosition;
+	CEntityHandle<CSprite> m_hSprite;
+	int                    m_iszSpriteName;
+	int                    m_iFrameStart;
+	Vector                 m_firePosition;
 
-	EHANDLE	m_hActivator;
-	EHANDLE	m_hCaller;
+	CEntityHandle<CBaseEntity> m_hActivator;
+	CEntityHandle<CBaseEntity> m_hCaller;
 };
 
 #endif		//EFFECTS_H

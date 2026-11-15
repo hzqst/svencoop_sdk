@@ -1,3 +1,6 @@
-
 /.vs
 /projects/vs2010/.vs
+__pycache__/
+/linux/debug/
+/linux/release/
+/linux/*_map.txt

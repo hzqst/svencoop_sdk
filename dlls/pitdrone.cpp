@@ -522,6 +522,7 @@ int CPitdrone::TakeDamage( entvars_t *inflictor, entvars_t *attacker, float dama
 
 float CPitdrone::GetPointsForDamage( float damage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float points = pev->max_health / sk_pitdrone_health.value;
 
 	points *= 5.0f;

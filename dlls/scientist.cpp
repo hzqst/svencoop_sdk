@@ -428,6 +428,7 @@ void CScientist::SetPlayerAlly( bool fState )
 
 float CScientist::GetPointsForDamage( float flDamage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	return ( flDamage / pev->max_health ) * ( pev->max_health / sk_scientist_health.value );
 }
 
@@ -495,9 +496,7 @@ CBaseEntity *CScientist::BestVisibleDeadAlly( void )
 		if ( entity->IsAlive() || entity->IsBSPModel() || entity->BloodColor() == DONT_BLEED )
 			continue;
 
-		CBaseMonster *monster = entity->MyMonsterPointer();
-
-		if ( !monster || monster->m_hHealer != NULL || ( entity->pev->flags & FL_FROZEN )
+		if ( entity->m_hHealer != NULL || ( entity->pev->flags & FL_FROZEN )
 		     || IRelationship( entity, true ) > R_NO )
 			continue;
 
@@ -513,10 +512,9 @@ CBaseEntity *CScientist::BestVisibleDeadAlly( void )
 		}
 	}
 
-	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	for ( int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
-		CBaseEntity *entity = UTIL_PlayerByIndex( i );
-		CBaseMonster *player = entity ? entity->MyMonsterPointer() : NULL;
+		CBaseEntity *player = UTIL_PlayerByIndex( i );
 
 		if ( !player || ( player->m_hHealer != NULL && player->m_hHealer != this ) || ( player->pev->flags & FL_FROZEN )
 		     || player->IsAlive() || IRelationship( player, true ) > R_NO )
@@ -623,14 +621,7 @@ void CScientist :: StartTask( Task_t *pTask )
 		{
 			CBaseEntity *target = m_hHealTarget;
 
-			CBaseMonster *monster;
-
-			if ( target )
-				monster = target->MyMonsterPointer();
-			else
-				monster = NULL;
-
-			if ( !monster || ( monster->m_hHealer != NULL && monster->m_hHealer != this )
+			if ( !target || ( target->m_hHealer != NULL && target->m_hHealer != this )
 			     || target->IsAlive() )
 			{
 				StopPlayerFollowing( false, true );
@@ -638,7 +629,7 @@ void CScientist :: StartTask( Task_t *pTask )
 				break;
 			}
 
-			monster->m_hHealer = this;
+			target->m_hHealer = this;
 			target->pev->renderamt = 1500;
 
 			if ( pTask->flData == 0 )
@@ -745,14 +736,7 @@ void CScientist :: RunTask( Task_t *pTask )
 		{
 			CBaseEntity *target = m_hHealTarget;
 
-			CBaseMonster *monster;
-
-			if ( target )
-				monster = target->MyMonsterPointer();
-			else
-				monster = NULL;
-
-			if ( monster && ( target->IsAlive() || ( monster->m_hHealer != NULL && monster->m_hHealer != this ) ) )
+			if ( target && ( target->IsAlive() || ( target->m_hHealer != NULL && target->m_hHealer != this ) ) )
 			{
 				StopPlayerFollowing( false, true );
 				TaskFail();
@@ -789,7 +773,7 @@ void CScientist :: RunTask( Task_t *pTask )
 				break;
 			}
 
-			studiohdr_t *model = (studiohdr_t *) GET_MODEL_PTR( target->edict() );
+			studiohdr_t *model = (studiohdr_t *) GET_MODEL_PTR( m_hTargetEnt->edict() );
 
 			if ( !model )
 				break;
@@ -797,7 +781,7 @@ void CScientist :: RunTask( Task_t *pTask )
 			mstudiobone_t *bones = (mstudiobone_t *) ( (byte *) model + model->boneindex );
 			int bone;
 
-			for ( bone = 0; bone < model->numbones; ++bone )
+			for ( bone = 0; bone < model->numbones; bone++ )
 			{
 				if ( strstr( bones[bone].name, "Head" ) )
 					break;
@@ -809,9 +793,11 @@ void CScientist :: RunTask( Task_t *pTask )
 			Vector position;
 			Vector angles;
 
-			GET_BONE_POSITION( target->edict(), bone, position, angles );
+			GET_BONE_POSITION( m_hTargetEnt->edict(), bone, position, angles );
 			pev->ideal_yaw = UTIL_VecToYaw( position - pev->origin ) + 90;
 			ChangeYaw( pev->yaw_speed );
+
+			target = m_hHealTarget;
 
 			CBaseMonster *monster = target->MyMonsterPointer();
 
@@ -820,17 +806,19 @@ void CScientist :: RunTask( Task_t *pTask )
 			if ( !m_fSequenceFinished )
 				break;
 
-			if ( monster && !target->IsAlive() && monster->m_hHealer == this
-			     && IRelationship( monster, true ) <= R_NO && !( monster->pev->effects & EF_NODRAW ) && target->IsRevivable() )
+			if ( !target->IsAlive() && target->m_hHealer == this
+			     && ( !monster || ( IRelationship( monster, true ) <= R_NO && !( monster->pev->effects & EF_NODRAW ) ) )
+			     && target->IsRevivable() )
 			{
-				monster->m_flReviveTime = gpGlobals->time;
+				if ( monster )
+					monster->m_flReviveTime = gpGlobals->time;
+
 				target->pev->flags |= FL_FROZEN;
 				target->pev->nextthink = gpGlobals->time + 0.5f;
-				monster->SetThink( &CBaseMonster::ReviveThink );
+				target->SetThink( &CBaseMonster::ReviveThink );
 			}
 
-			if ( monster )
-				monster->m_hHealer = NULL;
+			target->m_hHealer = NULL;
 
 			m_hHealTarget = NULL;
 			m_fReviving = false;
@@ -1459,7 +1447,7 @@ void CDeadScientist :: Spawn( )
 	pev->effects		= 0;
 	pev->yaw_speed		= 8;
 
-	m_iPose = max( 0, min( m_iPose, (int) ARRAYSIZE( m_szPoses ) - 1 ) );
+	m_iPose = V_max( 0, V_min( m_iPose, (int) ARRAYSIZE( m_szPoses ) - 1 ) );
 
 	pev->sequence = LookupSequence( m_szPoses[m_iPose] );
 

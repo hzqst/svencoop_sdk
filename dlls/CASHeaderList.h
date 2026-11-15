@@ -3,6 +3,8 @@
 
 #include "CASBaseClass.h"
 
+class CCommand;
+
 class CASHeaderList : public CASRefCountedBaseClass
 {
 public:
@@ -15,6 +17,7 @@ public:
 	void Clear(void);
 
 private:
+	friend void as_generate_includes_Callback( const CCommand &command );
 	friend class CASModuleBuilder;
 
 	struct Header_t

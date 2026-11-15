@@ -407,6 +407,7 @@ int CZombie::ObjectCaps( void )
 
 float CZombie::GetPointsForDamage( float flDamage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float points = pev->max_health / sk_zombie_health.value;
 
 	points *= 2.0f;

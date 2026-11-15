@@ -191,7 +191,7 @@ void CRpg::PrimaryAttack( void )
 
 void CRpg::WeaponIdle( void )
 {
-	if ( m_hPlayer && !(CBaseEntity *)m_hPlayer->m_pTank && !CClassicModeWrapper::isEnabled() )
+	if ( m_hPlayer && !(CBaseEntity *)m_hPlayer->m_hTank && !CClassicModeWrapper::isEnabled() )
 		m_hPlayer->pev->weaponmodel = MAKE_STRING( GetP_Model( "models/p_rpg.mdl" ) );
 
 	ResetEmptySound();

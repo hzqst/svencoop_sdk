@@ -743,7 +743,7 @@ void CBreakable::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vec
 		{
 			EMIT_SOUND_DYN( edict(), CHAN_AUTO, "buttons/latchunlocked2.wav", 1, 0.6f, 0, 100, 0, false, g_vecZero );
 			TakeHealth( fabsf( flDamage ), bitsDamageType, 0 );
-			pev->health = max( 1.0f, pev->health );
+			pev->health = V_max( 1.0f, pev->health );
 			pev->nextthink = gpGlobals->time;
 		}
 

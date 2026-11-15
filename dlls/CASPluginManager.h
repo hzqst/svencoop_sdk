@@ -12,7 +12,7 @@ class CASModuleBuilder;
 class CASDocumentation;
 class CKvBlockNode;
 class CScriptArray;
-struct edict_s;
+typedef struct edict_s edict_t;
 
 class CASPluginManager
 {
@@ -23,7 +23,7 @@ public:
 	CScriptArray *GetPluginListAsScriptArray(void) const;
 	CASModule *GetPlugin(const char *name) const;
 	bool IsPluginInList(const char *name) const;
-	void ListPlugins(edict_s *player) const;
+	void ListPlugins(edict_t *player) const;
 	void CallMapFunction(const char *declaration);
 	void Think(void);
 	void CallFunctionOnAllModules(CBasePlayer *player, const CASHook &hook,
@@ -84,6 +84,7 @@ private:
 struct cvar_s;
 extern cvar_s plugin_list_file;
 
+void OutputModuleScriptInfo( edict_t *player, CASModule *module );
 void RegisterSCScriptPluginManager(CASDocumentation *documentation);
 
 #endif

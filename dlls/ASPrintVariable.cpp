@@ -2,7 +2,7 @@
 #include "ASPrintVariable.h"
 #include "CASServerManager.h"
 #include "CString.h"
-#include "filesystem.h"
+#include "FileSystem.h"
 #include <angelscript.h>
 
 void ASPrintVariable(void *file, int typeId, void *address, const char *name)

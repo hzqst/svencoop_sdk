@@ -1,6 +1,6 @@
 #include "extdll.h"
 #include "enginecallback.h"
-#include "filesystem.h"
+#include "FileSystem.h"
 #include "CNetworkProfiler.h"
 #include <algorithm>
 #include <sstream>

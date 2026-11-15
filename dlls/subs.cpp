@@ -67,6 +67,7 @@ public:
 	void		Spawn( void );
 	void		Precache( void );
 	void		KeyValue( KeyValueData *pkvd );
+	int			ObjectCaps( void ) { return FCAP_ACROSS_TRANSITION; }
 	BOOL		IsTriggered( CBaseEntity *pEntity );
 	BOOL		IsAlive( void ) { return m_fEnabled; }
 	void		Use( CBaseEntity *activator, CBaseEntity *caller, USE_TYPE useType, float value );
@@ -585,7 +586,6 @@ void CBaseDelay::DelayThink( void )
 TYPEDESCRIPTION	CBaseToggle::m_SaveData[] = 
 {
 	DEFINE_FIELD( CBaseToggle, m_toggle_state, FIELD_INTEGER ),
-	DEFINE_FIELD( CBaseToggle, m_flActivateFinished, FIELD_TIME ),
 	DEFINE_FIELD( CBaseToggle, m_flMoveDistance, FIELD_FLOAT ),
 	DEFINE_FIELD( CBaseToggle, m_flWait, FIELD_FLOAT ),
 	DEFINE_FIELD( CBaseToggle, m_flLip, FIELD_FLOAT ),

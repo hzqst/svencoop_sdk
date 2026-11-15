@@ -65,16 +65,6 @@ TYPEDESCRIPTION	CBaseMonster::m_SaveData[] =
 {
 	DEFINE_FIELD( CBaseMonster, m_hEnemy, FIELD_EHANDLE ),
 	DEFINE_FIELD( CBaseMonster, m_hTargetEnt, FIELD_EHANDLE ),
-	DEFINE_FIELD( CBaseMonster, m_hHealTarget, FIELD_EHANDLE ),
-	DEFINE_FIELD( CBaseMonster, m_fReviving, FIELD_CHARACTER ),
-	DEFINE_FIELD( CBaseMonster, m_hHealer, FIELD_EHANDLE ),
-	DEFINE_FIELD( CBaseMonster, m_flNextMedicCallTime, FIELD_TIME ),
-	DEFINE_FIELD( CBaseMonster, m_useTime, FIELD_TIME ),
-	DEFINE_FIELD( CBaseMonster, m_fCanPlayerFollow, FIELD_CHARACTER ),
-	DEFINE_FIELD( CBaseMonster, m_hGuardEnt, FIELD_EHANDLE ),
-	DEFINE_FIELD( CBaseMonster, m_iszGuardEntName, FIELD_STRING ),
-	DEFINE_FIELD( CBaseMonster, m_hCineBlocker, FIELD_EHANDLE ),
-	DEFINE_FIELD( CBaseMonster, m_flMoveToRadius, FIELD_FLOAT ),
 	DEFINE_ARRAY( CBaseMonster, m_hOldEnemy, FIELD_EHANDLE, MAX_OLD_ENEMIES ),
 	DEFINE_ARRAY( CBaseMonster, m_vecOldEnemy, FIELD_POSITION_VECTOR, MAX_OLD_ENEMIES ),
 	DEFINE_FIELD( CBaseMonster, m_flFieldOfView, FIELD_FLOAT ),
@@ -127,6 +117,8 @@ TYPEDESCRIPTION	CBaseMonster::m_SaveData[] =
 
 	DEFINE_FIELD( CBaseMonster, m_scriptState, FIELD_INTEGER ),
 	{ FIELD_EHANDLE, "m_hCine", offsetof( CBaseMonster, m_pCine ), 1, 0 },
+	DEFINE_FIELD( CBaseMonster, m_fPlayerAlly, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CBaseMonster, m_flThinkDelay, FIELD_FLOAT ),
 };
 
 //IMPLEMENT_SAVERESTORE( CBaseMonster, CBaseToggle );
@@ -148,6 +140,7 @@ int CBaseMonster::Restore( CRestore &restore )
 
 	// We don't save/restore schedules yet
 	m_pSchedule = NULL;
+	m_pScheduleSaved = NULL;
 	m_iTaskStatus = TASKSTATUS_NEW;
 	
 	// Reset animation
@@ -429,7 +422,8 @@ int CBaseMonster :: ISoundMask ( void )
 {
 	return	bits_SOUND_WORLD	|
 			bits_SOUND_COMBAT	|
-			bits_SOUND_PLAYER;
+			bits_SOUND_PLAYER	|
+			bits_SOUND_BULLETHIT;
 }
 
 //=========================================================
@@ -543,7 +537,7 @@ CSound* CBaseMonster :: PBestScent ( void )
 //=========================================================
 void CBaseMonster :: MonsterThink ( void )
 {
-	pev->nextthink = gpGlobals->time + m_flThinkInterval;
+	pev->nextthink = gpGlobals->time + m_flThinkDelay;
 	m_flFrameTime = gpGlobals->time - m_flLastThinkTime;
 	m_flLastThinkTime = gpGlobals->time;// keep monster thinking.
 
@@ -1078,7 +1072,7 @@ BOOL CBaseMonster :: FRefreshRoute ( float flMoveRadius )
 		case MOVEGOAL_PATHCORNER:
 			{
 				// monster is on a path_corner loop
-				pPathCorner = m_pGoalEnt;
+				pPathCorner = m_hGoalEnt;
 				i = 0;
 
 				while ( pPathCorner && i < ROUTE_SIZE )
@@ -2132,11 +2126,11 @@ void CBaseMonster :: AdvanceRoute ( float distance )
 	{
 		if ( ! (m_Route[ m_iRouteIndex ].iType & bits_MF_IS_GOAL) )
 		{
-			// If we've just passed a path_corner, advance m_pGoalEnt
+			// If we've just passed a path_corner, advance m_hGoalEnt
 			if ( (m_Route[ m_iRouteIndex ].iType & ~bits_MF_NOT_TO_MASK) == bits_MF_TO_PATHCORNER )
 			{
-				if ( m_pGoalEnt )
-					m_pGoalEnt = m_pGoalEnt->GetNextTarget();
+				if ( m_hGoalEnt )
+					m_hGoalEnt = m_hGoalEnt->GetNextTarget();
 			}
 
 			if ( m_Route[m_iRouteIndex].iType & bits_MF_TO_JUMP )
@@ -3087,9 +3081,9 @@ void CBaseMonster::ApplyEffects( void )
 	else
 	{
 		pev->renderfx = kRenderFxGlowShell;
-		pev->rendercolor.x = min( m_vecEffectGlowColor.x, 255.0f );
-		pev->rendercolor.y = min( m_vecEffectGlowColor.y, 255.0f );
-		pev->rendercolor.z = min( m_vecEffectGlowColor.z, 255.0f );
+		pev->rendercolor.x = V_min( m_vecEffectGlowColor.x, 255.0f );
+		pev->rendercolor.y = V_min( m_vecEffectGlowColor.y, 255.0f );
+		pev->rendercolor.z = V_min( m_vecEffectGlowColor.z, 255.0f );
 	}
 
 	bool wasBlocked = ( pev->flags & FL_NOWEAPONS ) != 0;
@@ -3216,7 +3210,7 @@ void CBaseMonster::ReviveThink( void )
 			continue;
 		}
 
-		if ( entity->IsPlayer() )
+		if ( entity->IsBSPModel() )
 		{
 			TraceResult trace;
 			Vector top = pev->origin + Vector( 0, 0, pev->maxs.z );
@@ -3250,7 +3244,7 @@ void CBaseMonster::ReviveThink( void )
 		{
 			CBasePlayer *player = (CBasePlayer *) this;
 
-			player->m_fReviving = false;
+			player->m_bRespawnMessageShown = false;
 			SetThink( &CBasePlayer::PlayerDeathThink );
 		}
 	}
@@ -3371,7 +3365,7 @@ void CBaseMonster :: StartMonster ( void )
 	m_flShockGlowTime = gpGlobals->time;
 	m_fCanFadeStart = false;
 	m_flNextTankSearchTime = gpGlobals->time;
-	m_flThinkInterval = 0.1f;
+	m_flThinkDelay = 0.1f;
 	m_flAutomaticAttackTime = 0;
 	m_fFallDamageReady = false;
 	m_fDeathKnockback = false;
@@ -3432,26 +3426,26 @@ void CBaseMonster :: StartMonster ( void )
 		else
 			goal = NULL;
 
-		m_pGoalEnt = NULL;
+		m_hGoalEnt = NULL;
 
 		if ( goal != NULL && goal->pev != NULL )
 		{
 			edict_t *goalEdict = goal->edict();
 
 			if ( goalEdict != NULL && !goalEdict->free )
-				m_pGoalEnt = CBaseEntity::Instance( goalEdict );
+				m_hGoalEnt = CBaseEntity::Instance( goalEdict );
 		}
 
-		if ( !m_pGoalEnt )
+		if ( !m_hGoalEnt )
 		{
 			ALERT(at_error, "ReadyMonster()--%s couldn't find target %s", STRING(pev->classname), STRING(pev->target));
 		}
 		else
 		{
 			// Monster will start turning towards his destination
-			MakeIdealYaw ( m_pGoalEnt->pev->origin );
+			MakeIdealYaw ( m_hGoalEnt->pev->origin );
 
-			if ( FClassnameIs( m_pGoalEnt->pev, "path_corner"))
+			if ( FClassnameIs( m_hGoalEnt->pev, "path_corner"))
 			{
 				m_movementGoal = MOVEGOAL_PATHCORNER;
 

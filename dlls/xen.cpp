@@ -18,6 +18,8 @@
 #include "animation.h"
 #include "effects.h"
 #include "actanimating.h"
+#include "func_break.h"
+#include "EntityHandle.h"
 
 #define SF_XEN_DROP_TO_SURFACE	2
 #define SF_XEN_RANDOM_YAW		4
@@ -85,14 +87,14 @@ public:
 	static	TYPEDESCRIPTION m_SaveData[];
 
 private:
-	CSprite		*m_pGlow;
+	EntityHandle<CSprite> m_hGlow;
 };
 
 LINK_ENTITY_TO_CLASS( xen_plantlight, CXenPLight );
 
 TYPEDESCRIPTION	CXenPLight::m_SaveData[] = 
 {
-	DEFINE_FIELD( CXenPLight, m_pGlow, FIELD_CLASSPTR ),
+	DEFINE_FIELD( CXenPLight, m_hGlow, FIELD_EHANDLE ),
 };
 
 IMPLEMENT_SAVERESTORE( CXenPLight, CActAnimating );
@@ -113,16 +115,18 @@ void CXenPLight :: Spawn( void )
 	pev->nextthink = gpGlobals->time + 0.1;
 	pev->frame = RANDOM_FLOAT(0,255);
 
-	m_pGlow = CSprite::SpriteCreate( XEN_PLANT_GLOW_SPRITE, pev->origin + Vector(0,0,(pev->mins.z+pev->maxs.z)*0.5), FALSE );
-	m_pGlow->SetTransparency( kRenderGlow, pev->rendercolor.x, pev->rendercolor.y, pev->rendercolor.z, pev->renderamt, pev->renderfx );
-	m_pGlow->SetAttachment( edict(), 1 );
+	CSprite *pGlow = CSprite::SpriteCreate( XEN_PLANT_GLOW_SPRITE, pev->origin + Vector(0,0,(pev->mins.z+pev->maxs.z)*0.5), FALSE );
+
+	m_hGlow = pGlow;
+	pGlow->SetTransparency( kRenderGlow, pev->rendercolor.x, pev->rendercolor.y, pev->rendercolor.z, pev->renderamt, pev->renderfx );
+	pGlow->SetAttachment( edict(), 1 );
 }
 
 
 void CXenPLight :: Precache( void )
 {
-	PRECACHE_MODEL( "models/light.mdl" );
-	PRECACHE_MODEL( XEN_PLANT_GLOW_SPRITE );
+	UTIL_PrecacheModel( this, "models/light.mdl" );
+	UTIL_PrecacheModel( this, XEN_PLANT_GLOW_SPRITE );
 }
 
 
@@ -158,6 +162,11 @@ void CXenPLight :: Think( void )
 	default:
 		break;
 	}
+
+	pev->rendermode = m_iOriginalRenderMode;
+	pev->renderfx = m_iOriginalRenderFX;
+	pev->renderamt = m_flOriginalRenderAmount;
+	pev->rendercolor = m_vecOriginalRenderColor;
 }
 
 
@@ -177,16 +186,22 @@ void CXenPLight :: Touch( CBaseEntity *pOther )
 void CXenPLight :: LightOn( void )
 {
 	SUB_UseTargets( this, USE_ON, 0 );
-	if ( m_pGlow )
-		m_pGlow->pev->effects &= ~EF_NODRAW;
+
+	CSprite *pGlow = m_hGlow;
+
+	if ( pGlow )
+		pGlow->pev->effects &= ~EF_NODRAW;
 }
 
 
 void CXenPLight :: LightOff( void )
 {
 	SUB_UseTargets( this, USE_OFF, 0 );
-	if ( m_pGlow )
-		m_pGlow->pev->effects |= EF_NODRAW;
+
+	CSprite *pGlow = m_hGlow;
+
+	if ( pGlow )
+		pGlow->pev->effects |= EF_NODRAW;
 }
 
 
@@ -244,6 +259,9 @@ class CXenTreeTrigger : public CBaseEntity
 public:
 	void		Touch( CBaseEntity *pOther );
 	static CXenTreeTrigger *TriggerCreate( edict_t *pOwner, const Vector &position );
+
+private:
+	EntityHandle<CBaseEntity> m_hOwner;
 };
 LINK_ENTITY_TO_CLASS( xen_ttrigger, CXenTreeTrigger );
 
@@ -255,6 +273,7 @@ CXenTreeTrigger *CXenTreeTrigger :: TriggerCreate( edict_t *pOwner, const Vector
 	pTrigger->pev->solid = SOLID_TRIGGER;
 	pTrigger->pev->movetype = MOVETYPE_NONE;
 	pTrigger->pev->owner = pOwner;
+	pTrigger->m_hOwner = CBaseEntity::Instance( pOwner );
 
 	return pTrigger;
 }
@@ -262,11 +281,10 @@ CXenTreeTrigger *CXenTreeTrigger :: TriggerCreate( edict_t *pOwner, const Vector
 
 void CXenTreeTrigger::Touch( CBaseEntity *pOther )
 {
-	if ( pev->owner )
-	{
-		CBaseEntity *pEntity = CBaseEntity::Instance(pev->owner);
-		pEntity->Touch( pOther );
-	}
+	CBaseEntity *pOwner = m_hOwner;
+
+	if ( pOwner )
+		pOwner->Touch( pOther );
 }
 
 
@@ -293,25 +311,26 @@ public:
 	static const char *pAttackMissSounds[];
 
 private:
-	CXenTreeTrigger	*m_pTrigger;
+	EntityHandle<CXenTreeTrigger> m_hTrigger;
 };
 
 LINK_ENTITY_TO_CLASS( xen_tree, CXenTree );
 
 TYPEDESCRIPTION	CXenTree::m_SaveData[] = 
 {
-	DEFINE_FIELD( CXenTree, m_pTrigger, FIELD_CLASSPTR ),
+	DEFINE_FIELD( CXenTree, m_hTrigger, FIELD_EHANDLE ),
 };
 
 IMPLEMENT_SAVERESTORE( CXenTree, CActAnimating );
 
 void CXenTree::OnDestroy( void )
 {
-	if ( m_pTrigger )
-	{
-		m_pTrigger->pev->owner = NULL;
-		UTIL_Remove( m_pTrigger );
-	}
+	CXenTreeTrigger *pTrigger = m_hTrigger;
+
+	if ( pTrigger )
+		pTrigger->pev->owner = NULL;
+
+	UTIL_Remove( m_hTrigger );
 }
 
 void CXenTree :: Spawn( void )
@@ -337,8 +356,10 @@ void CXenTree :: Spawn( void )
 	UTIL_MakeVectorsPrivate( pev->angles, triggerPosition, NULL, NULL );
 	triggerPosition = pev->origin + (triggerPosition * 64);
 	// Create the trigger
-	m_pTrigger = CXenTreeTrigger::TriggerCreate( edict(), triggerPosition );
-	UTIL_SetSize( m_pTrigger->pev, Vector( -24, -24, 0 ), Vector( 24, 24, 128 ) );
+	CXenTreeTrigger *pTrigger = CXenTreeTrigger::TriggerCreate( edict(), triggerPosition );
+
+	m_hTrigger = pTrigger;
+	UTIL_SetSize( pTrigger->pev, Vector( -24, -24, 0 ), Vector( 24, 24, 128 ) );
 }
 
 const char *CXenTree::pAttackHitSounds[] = 
@@ -356,10 +377,14 @@ const char *CXenTree::pAttackMissSounds[] =
 
 void CXenTree :: Precache( void )
 {
-	PRECACHE_MODEL( "models/tree.mdl" );
-	PRECACHE_MODEL( XEN_PLANT_GLOW_SPRITE );
-	PRECACHE_SOUND_ARRAY( pAttackHitSounds );
-	PRECACHE_SOUND_ARRAY( pAttackMissSounds );
+	UTIL_PrecacheModel( this, "models/tree.mdl" );
+	UTIL_PrecacheModel( this, XEN_PLANT_GLOW_SPRITE );
+
+	for ( int i = 0; i < ARRAYSIZE( pAttackHitSounds ); i++ )
+		PrecacheSound_Intercept( this, pAttackHitSounds[i] );
+
+	for ( int i = 0; i < ARRAYSIZE( pAttackMissSounds ); i++ )
+		PrecacheSound_Intercept( this, pAttackMissSounds[i] );
 }
 
 
@@ -391,8 +416,10 @@ void CXenTree :: HandleAnimEvent( MonsterEvent_t *pEvent )
 		{
 			CBaseEntity *pList[8];
 			BOOL sound = FALSE;
-			int count = UTIL_EntitiesInBox( pList, 8, m_pTrigger->pev->absmin, m_pTrigger->pev->absmax, FL_MONSTER|FL_CLIENT );
+			CXenTreeTrigger *pTrigger = m_hTrigger;
 			Vector forward;
+
+			int count = UTIL_EntitiesInBox( pList, 8, pTrigger->pev->absmin, pTrigger->pev->absmax, FL_MONSTER|FL_CLIENT );
 
 			UTIL_MakeVectorsPrivate( pev->angles, forward, NULL, NULL );
 
@@ -464,9 +491,8 @@ public:
 	void		Precache( void );
 	void		Touch( CBaseEntity *pOther );
 	void		Think( void );
-	int			TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType ) { Attack(); return 0; }
+	int			TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 //	void		HandleAnimEvent( MonsterEvent_t *pEvent );
-	void		Attack( void ) {}
 
 	static const char *pModelNames[];
 };
@@ -630,7 +656,20 @@ const char *CXenSpore::pModelNames[] =
 
 void CXenSpore :: Precache( void )
 {
-	PRECACHE_MODEL( (char *)pModelNames[pev->skin] );
+	UTIL_PrecacheModel( this, pModelNames[pev->skin] );
+}
+
+int CXenSpore::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
+{
+	if ( bitsDamageType & ( DMG_BULLET | DMG_SLASH | DMG_CLUB | DMG_SNIPER ) )
+	{
+		int pitch = RANDOM_LONG( 95, 105 );
+		const char *sound = CBreakable::pSoundsFlesh[RANDOM_LONG( 0, 5 )];
+
+		EMIT_SOUND_DYN( edict(), CHAN_AUTO, sound, 1, ATTN_NORM, 0, pitch );
+	}
+
+	return 0;
 }
 
 

@@ -108,6 +108,7 @@ public:
 
 	void  Move( float flInterval );
 	void  MoveExecute( CBaseEntity *pTargetEnt, const Vector &vecDir, float flInterval );
+	int CheckLocalMove( const Vector &vecStart, const Vector &vecEnd, CBaseEntity *pTarget, float *pflDist, Vector *pVecEnd = NULL, bool fCheckOnly = false );
 	void  MonsterThink( void );
 	void  RunAI( void );
 	void  Stop( void );
@@ -124,7 +125,7 @@ public:
 	float m_flBlink;
 
 	float m_flEnemyTouched;
-	BOOL  m_bOnAttack;
+	bool  m_bOnAttack;
 
 	float m_flMaxSpeed;
 	float m_flMinSpeed;
@@ -157,7 +158,7 @@ TYPEDESCRIPTION	CIchthyosaur::m_SaveData[] =
 	DEFINE_FIELD( CIchthyosaur, m_idealDist, FIELD_FLOAT ),
 	DEFINE_FIELD( CIchthyosaur, m_flBlink, FIELD_FLOAT ),
 	DEFINE_FIELD( CIchthyosaur, m_flEnemyTouched, FIELD_FLOAT ),
-	DEFINE_FIELD( CIchthyosaur, m_bOnAttack, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CIchthyosaur, m_bOnAttack, FIELD_CHARACTER ),
 	DEFINE_FIELD( CIchthyosaur, m_flMaxSpeed, FIELD_FLOAT ),
 	DEFINE_FIELD( CIchthyosaur, m_flMinSpeed, FIELD_FLOAT ),
 	DEFINE_FIELD( CIchthyosaur, m_flMaxDist, FIELD_FLOAT ),
@@ -918,6 +919,11 @@ float CIchthyosaur::VectorToPitch( const Vector &vec )
 }
 
 //=========================================================
+int CIchthyosaur::CheckLocalMove( const Vector &vecStart, const Vector &vecEnd, CBaseEntity *pTarget, float *pflDist, Vector *pVecEnd, bool fCheckOnly )
+{
+	return CBaseMonster::CheckLocalMove( vecStart, vecEnd, pTarget, pflDist, pVecEnd, fCheckOnly );
+}
+
 void CIchthyosaur::Move(float flInterval)
 {
 	if ( FRouteClear() )
@@ -933,7 +939,7 @@ void CIchthyosaur::Move(float flInterval)
 	Vector delta = m_Route[m_iRouteIndex].vecLocation - pev->origin;
 	Vector direction = delta.Normalize();
 	float distance = delta.Length();
-	float checkDistance = min( distance, 200.0f );
+	float checkDistance = V_min( distance, 200.0f );
 	int routeType = m_Route[m_iRouteIndex].iType & ~bits_MF_NOT_TO_MASK;
 	CBaseEntity *target = NULL;
 
@@ -1427,6 +1433,7 @@ int CIchthyosaur::ObjectCaps( void )
 
 float CIchthyosaur::GetPointsForDamage( float flDamage )
 {
+	//ScoreIncrement = (Damage / MonsterCustomHealth) * (MonstersDefaultScore * (MonstersCustomHealth / MonstersDefaultHealth) )
 	float points = pev->max_health / sk_ichthyosaur_health.value;
 
 	points *= 12.0f;

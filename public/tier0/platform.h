@@ -6,8 +6,8 @@
 //
 //=============================================================================//
 	   
-#ifndef PLATFORM_H
-#define PLATFORM_H
+#ifndef TIER0_PLATFORM_H
+#define TIER0_PLATFORM_H
 
 #include "wchartypes.h"
 #include "basetypes.h"
@@ -34,6 +34,7 @@
 
 
 // Avoid the ISO conformant warning
+#ifdef _WIN32
 #define stricmp _stricmp
 #define strnicmp _strnicmp
 #define itoa _itoa
@@ -45,6 +46,9 @@
 #endif
 
 #define DLLEXPORT __declspec( dllexport )
+#else
+#define DLLEXPORT __attribute__((visibility("default")))
+#endif
 
 #define DECLARE_CLASS_SERVER( className, baseClassName ) \
 	typedef baseClassName BaseClass; \
@@ -1233,4 +1237,4 @@ private:
 
 #include "tier0/valve_on.h"
 
-#endif /* PLATFORM_H */
+#endif /* TIER0_PLATFORM_H */

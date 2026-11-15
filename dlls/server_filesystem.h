@@ -1,7 +1,7 @@
 #ifndef SERVER_FILESYSTEM_H
 #define SERVER_FILESYSTEM_H
 
-#include "filesystem.h"
+#include "FileSystem.h"
 
 bool InitializeFileSystem(void);
 void CloseFileSystem(void);

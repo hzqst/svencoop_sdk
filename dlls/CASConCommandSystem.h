@@ -52,6 +52,7 @@ public:
 private:
 	friend class CASCVar;
 	friend class CASServerManager;
+	friend void as_command_Callback( const CCommand &command );
 
 	struct ModuleData_t
 	{
@@ -75,6 +76,7 @@ private:
 	bool						m_bInCVarCallback;
 };
 
+void ServerCommandQueueCallback( ConCommandExecuteResult::Type result, const char *name, const CASCommand *command );
 void RegisterSCScriptConCommandSystem(CASDocumentation *documentation);
 void RegisterSCScriptConCommand(CASDocumentation *documentation);
 void RegisterSCScriptCVarClasses(CASDocumentation *documentation);

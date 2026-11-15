@@ -1,7 +1,7 @@
 #ifndef CLIENT_MEDIA_H
 #define CLIENT_MEDIA_H
 
-#include "client_fmod.h"
+#include <fmodex/fmod.hpp>
 
 enum MediaPlayerAction
 {

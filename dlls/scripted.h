@@ -84,7 +84,6 @@ public:
 	int m_fMoveTo;
 	int m_iFinishSchedule;
 	float m_flRadius;		// range to search
-	float m_flMoveToRadius;	// the move ends within this of the sequence ("moveto_radius")
 	float m_flRepeat;	// repeat rate
 
 	int m_iDelay;
@@ -94,7 +93,8 @@ public:
 	int	m_saved_solid;
 	int m_saved_effects;
 //	Vector m_vecOrigOrigin;
-	BOOL m_interruptable;
+	bool  m_interruptable;
+	float m_flMoveToRadius;	// the move ends within this of the sequence ("moveto_radius")
 };
 
 class CCineAI : public CCineMonster

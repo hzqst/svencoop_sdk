@@ -29,13 +29,14 @@
 #include "server_support.h"
 #include "ServerDLL.h"
 #include "CServer.h"
+#include "CCommand.h"
+#include "CConCommandSystem.h"
 #include "client_commands.h"
 #include "ConCommandDefs.h"
 #include "CSurvivalMode.h"
 #include "CASHook.h"
 #include "CMultiplayGameMgrHelper.h"
 #include "CASServerManager.h"
-#include "CASTextMenus.h"
 #include "CMap.h"
 #include "CHashStringPool.h"
 #include "util.h"
@@ -566,11 +567,6 @@ void ClientCommand( edict_t *pEntity )
 	{
 		logCommand = false;
 	}
-	else if ( FStrEq( pcmd, "as_menuselect" ) )
-	{
-		CASTextMenus::GetInstance()->HandleMenuSelect( GetClassPtr( (CBasePlayer *) pev ), atoi( CMD_ARGV( 1 ) ) );
-		logCommand = false;
-	}
 	else if ( g_pGameRules->ClientCommand( GetClassPtr((CBasePlayer *)pev), pcmd ) )
 	{
 		// MenuSelect returns true only if the command is properly handled,  so don't print a warning
@@ -578,18 +574,23 @@ void ClientCommand( edict_t *pEntity )
 	}
 	else
 	{
-		logCommand = false;
+		CCommand arguments;
 
-		// tell the user they entered an unknown command
-		char command[128];
+		if ( CConCommandSystem::GetInstance()->Execute( arguments, GetClassPtr( (CBasePlayer *) pev ), false ) != 0 )
+		{
+			logCommand = false;
 
-		// check the length of the command (prevents crash)
-		// max total length is 192 ...and we're adding a string below ("Unknown command: %s\n")
-		strncpy( command, pcmd, 127 );
-		command[127] = '\0';
+			// tell the user they entered an unknown command
+			char command[128];
 
-		// tell the user they entered an unknown command
-		ClientPrint( &pEntity->v, HUD_PRINTCONSOLE, UTIL_VarArgs( "Unknown command: %s\n", command ) );
+			// check the length of the command (prevents crash)
+			// max total length is 192 ...and we're adding a string below ("Unknown command: %s\n")
+			strncpy( command, pcmd, 127 );
+			command[127] = '\0';
+
+			// tell the user they entered an unknown command
+			ClientPrint( &pEntity->v, HUD_PRINTCONSOLE, UTIL_VarArgs( "Unknown command: %s\n", command ) );
+		}
 	}
 
 	if ( logCommand )

@@ -454,11 +454,11 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &mp_weapon_respawndelay );
 	CVAR_REGISTER( &mp_ammo_respawndelay );
 	CVAR_REGISTER( &allow_spectators );
+	CVAR_REGISTER(&plugin_list_file);
 	CVAR_REGISTER(&as_log_level);
 	CVAR_REGISTER(&as_script_log_max);
 	CVAR_REGISTER(&as_file_size_quota);
 	CVAR_REGISTER(&as_compiler_treat_warnings_as_errors);
-	CVAR_REGISTER(&plugin_list_file);
 
 	CVAR_REGISTER( &skillcfgfile );
 	CVAR_REGISTER( &adminsfile );

@@ -220,13 +220,13 @@ void CASTextMenu::Open( int displayTime, unsigned int page, CScriptArray *player
 
 	if ( !m_pInputCallback )
 	{
-		CASLog::GetInstance()->Warning( AS_LOG_DEFAULT, "CTextMenu::Open: No input callback provided, cannot open!\n" );
+		CASLog::GetInstance()->Error( AS_LOG_DEFAULT, "CTextMenu::Open: No input callback provided, cannot open!\n" );
 		return;
 	}
 
 	if ( !IsRegistered() )
 	{
-		CASLog::GetInstance()->Warning( AS_LOG_DEFAULT, "CTextMenu::Open: Menu is not registered!\n" );
+		CASLog::GetInstance()->Error( AS_LOG_DEFAULT, "CTextMenu::Open: Menu is not registered!\n" );
 		return;
 	}
 
@@ -260,19 +260,19 @@ void CASTextMenu::Open( int displayTime, unsigned int page, CBasePlayer *player 
 
 	if ( !m_pInputCallback )
 	{
-		CASLog::GetInstance()->Warning( AS_LOG_DEFAULT, "CTextMenu::Open: No input callback provided, cannot open!\n" );
+		CASLog::GetInstance()->Error( AS_LOG_DEFAULT, "CTextMenu::Open: No input callback provided, cannot open!\n" );
 		return;
 	}
 
 	if ( !IsRegistered() )
 	{
-		CASLog::GetInstance()->Warning( AS_LOG_DEFAULT, "CTextMenu::Open: Menu is not registered!\n" );
+		CASLog::GetInstance()->Error( AS_LOG_DEFAULT, "CTextMenu::Open: Menu is not registered!\n" );
 		return;
 	}
 
 	if ( !GetItemCount() )
 	{
-		CASLog::GetInstance()->Warning( AS_LOG_DEFAULT, "CTextMenu::Open: No items to display!\n" );
+		CASLog::GetInstance()->Error( AS_LOG_DEFAULT, "CTextMenu::Open: No items to display!\n" );
 		return;
 	}
 
@@ -281,7 +281,7 @@ void CASTextMenu::Open( int displayTime, unsigned int page, CBasePlayer *player 
 
 	if ( text.empty() )
 	{
-		CASLog::GetInstance()->Warning( AS_LOG_DEFAULT, "CTextMenu::Open: Invalid page '%u'!\n", page );
+		CASLog::GetInstance()->Error( AS_LOG_DEFAULT, "CTextMenu::Open: Invalid page '%u'!\n", page );
 		return;
 	}
 
@@ -325,5 +325,5 @@ void CASTextMenu::InputReceived( CBasePlayer *player, int slot )
 	if ( item )
 		m_pInputCallback->Call( 0, this, player, slot, item );
 	else
-		CASLog::GetInstance()->Warning( AS_LOG_DEFAULT, "CTextMenu::InputReceived: Item index '%u' was invalid!\n", index );
+		CASLog::GetInstance()->Error( AS_LOG_DEFAULT, "CTextMenu::InputReceived: Item index '%u' was invalid!\n", index );
 }

@@ -6,6 +6,12 @@
 
 #define SQUAD_TLK_CFRIENDS 8
 
+enum
+{
+	TASK_OP4_MEDIC_SAY_HEAL = LAST_TALKMONSTER_TASK,
+	TASK_OP4_MEDIC_RESET_HEAL,
+};
+
 class CSquadTalkMonster : public CSquadMonster
 {
 public:
@@ -18,6 +24,7 @@ public:
 	void Killed( entvars_t *pevAttacker, int iGib );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	void PrescheduleThink( void );
+	void SetActivity( Activity newActivity );
 	Schedule_t *GetScheduleOfType( int Type );
 	void StartTask( Task_t *pTask );
 	void RunTask( Task_t *pTask );

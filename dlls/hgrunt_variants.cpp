@@ -6,6 +6,7 @@
 #include "schedule.h"
 #include "squadmonster.h"
 #include "squadtalkmonster.h"
+#include "scripted.h"
 #include "weapons.h"
 #include "soundent.h"
 #include "effects.h"
@@ -575,6 +576,8 @@ BOOL HumanCheckMeleeAttack1( CBaseMonster *monster, float flDot, float flDist )
 	return flDist <= 64 && flDot >= 0.7f && classification != CLASS_ALIEN_BIOWEAPON && classification != CLASS_PLAYER_BIOWEAPON;
 }
 
+extern cvar_t sk_hgrunt_gspeed;
+
 BOOL HumanCheckRangeAttack2( CSquadMonster *monster, HumanCombatData &data, float flDot, float flDist )
 {
 	entvars_t *pev = monster->pev;
@@ -621,7 +624,7 @@ BOOL HumanCheckRangeAttack2( CSquadMonster *monster, HumanCombatData &data, floa
 		target = monster->m_vecEnemyLKP + ( enemy->BodyTarget( pev->origin ) - base );
 
 		if ( monster->HasConditions( bits_COND_SEE_ENEMY ) )
-			target = target + ( ( target - pev->origin ).Length() / gSkillData.hgruntGrenadeSpeed ) * enemy->pev->velocity;
+			target = target + ( ( target - pev->origin ).Length() / sk_hgrunt_gspeed.value ) * enemy->pev->velocity;
 	}
 
 	if ( monster->SquadMemberInRange( target, 256 ) || ( target - pev->origin ).Length2D() <= 256 )
@@ -636,7 +639,7 @@ BOOL HumanCheckRangeAttack2( CSquadMonster *monster, HumanCombatData &data, floa
 	if ( pev->weapons & HGRUNT_HANDGRENADE )
 		toss = VecCheckToss( pev, monster->GetGunPosition(), target, 1.0 );
 	else
-		toss = VecCheckThrow( pev, monster->GetGunPosition(), target, gSkillData.hgruntGrenadeSpeed, 0.7 );
+		toss = VecCheckThrow( pev, monster->GetGunPosition(), target, sk_hgrunt_gspeed.value, 0.7 );
 
 	if ( toss != g_vecZero )
 	{
@@ -941,9 +944,7 @@ BOOL HumanAnimEvent( CBaseMonster *monster, HumanCombatData &data, HumanCombatTy
 
 enum
 {
-	TASK_OP4_MEDIC_SAY_HEAL = LAST_TALKMONSTER_TASK,
-	TASK_OP4_MEDIC_RESET_HEAL,
-	TASK_OP4_MEDIC_HEAL,
+	TASK_OP4_MEDIC_HEAL = LAST_TALKMONSTER_TASK + 2,
 	TASK_OP4_FACE_TOSS_DIR = LAST_TALKMONSTER_TASK + 4,
 	TASK_OP4_SPEAK_SENTENCE,
 	TASK_OP4_CHECK_FIRE,
@@ -4067,7 +4068,10 @@ void CHGruntOp4Medic::Heal( void )
 	if ( gpGlobals->time > m_Combat.m_flHealTime )
 	{
 		if ( target->IsAlive() )
+		{
+			target = m_hHealTarget;
 			target->TakeHealth( target->pev->health > 25 ? 10 : 25, DMG_MEDKITHEAL );
+		}
 
 		m_Combat.m_flHealTime = gpGlobals->time + 0.5f;
 	}
@@ -4166,36 +4170,15 @@ void CHGruntOp4Medic::HandleAnimEvent( MonsterEvent_t *event )
 
 void CHGruntOp4Medic::StartTask( Task_t *task )
 {
-	if ( task->iTask == TASK_OP4_MEDIC_SAY_HEAL && m_pSchedule == slOp4MedicHeal )
-	{
-		TaskComplete();
-		return;
-	}
-
-	if ( task->iTask == TASK_OP4_MEDIC_RESET_HEAL
-		 && ( m_pSchedule == slOp4MedicHeal || m_pSchedule == slOp4MedicContinue || m_pSchedule == slOp4MedicRevive
-			  || m_pSchedule == slOp4MedicNeedleDisarm ) )
-	{
-		m_hHealTarget = NULL;
-		m_hTargetEnt = m_Combat.m_hSavedTarget;
-		m_Combat.m_hSavedTarget = NULL;
-		m_fReviving = false;
-		TaskComplete();
-		return;
-	}
-
-	m_iTaskStatus = TASKSTATUS_RUNNING;
-
 	if ( task->iTask == TASK_OP4_MEDIC_REVIVE )
 	{
-		CBaseEntity *target = m_hHealTarget;
-
-		if ( !target || target->IsAlive() || IRelationship( target, true ) > R_NO )
+		if ( m_hHealTarget == NULL || m_hHealTarget->IsAlive() || IRelationship( m_hHealTarget, true ) > R_NO )
 		{
 			TaskComplete();
 			return;
 		}
 
+		CBaseEntity *target = m_hHealTarget;
 		CBaseMonster *monster = target->MyMonsterPointer();
 
 		if ( !monster || ( target->pev->effects & EF_NODRAW ) || !target->IsRevivable()
@@ -4208,8 +4191,11 @@ void CHGruntOp4Medic::StartTask( Task_t *task )
 		return;
 	}
 
-	if ( task->iTask == TASK_OP4_MEDIC_HEAL && ( m_pSchedule == slOp4MedicHeal || m_pSchedule == slOp4MedicContinue ) )
+	if ( task->iTask == TASK_OP4_MEDIC_HEAL )
 	{
+		if ( m_hHealTarget != NULL && ( m_hHealTarget->pev->origin - pev->origin ).Length() < 64 )
+			m_hHealTarget->MyMonsterPointer()->PainSound();
+
 		m_IdealActivity = ACT_MELEE_ATTACK2;
 		return;
 	}
@@ -4255,7 +4241,7 @@ void CHGruntOp4Medic::StartTask( Task_t *task )
 
 void CHGruntOp4Medic::RunTask( Task_t *task )
 {
-	if ( task->iTask == TASK_OP4_MEDIC_HEAL && ( m_pSchedule == slOp4MedicHeal || m_pSchedule == slOp4MedicContinue ) )
+	if ( task->iTask == TASK_OP4_MEDIC_HEAL )
 	{
 		CBaseEntity *target = m_hHealTarget;
 
@@ -4267,7 +4253,7 @@ void CHGruntOp4Medic::RunTask( Task_t *task )
 
 		if ( TargetDistance() > MEDIC_HEAL_FOLLOW_DIST )
 		{
-			if ( target->IsAlive() )
+			if ( m_hHealTarget->IsAlive() )
 			{
 				ChangeSchedule( slOp4MedicContinue );
 			}
@@ -4278,9 +4264,40 @@ void CHGruntOp4Medic::RunTask( Task_t *task )
 			}
 		}
 
-		MakeIdealYaw( target->pev->origin );
+		pev->ideal_yaw = UTIL_VecToYaw( m_hHealTarget->pev->origin - pev->origin );
 		ChangeYaw( pev->yaw_speed );
 		Heal();
+
+		return;
+	}
+
+	if ( task->iTask == TASK_PLAY_SEQUENCE_FACE_TARGET )
+	{
+		if ( m_IdealActivity == ACT_ARM && m_Combat.m_fGunHolstered && GetBodygroup( OP4_GUN_GROUP ) == MEDIC_GUN_NEEDLE )
+		{
+			TaskComplete();
+			return;
+		}
+
+		if ( m_hHealTarget != NULL && m_hHealTarget->IsAlive() && ( m_hHealTarget->pev->flags & FL_MONSTER )
+		     && m_MonsterState == MONSTERSTATE_COMBAT && pev->frame > 64 )
+			Heal();
+
+		CBaseEntity *target;
+
+		if ( task->iTask == TASK_PLAY_SEQUENCE_FACE_TARGET )
+			target = m_hTargetEnt;
+		else
+			target = m_hEnemy;
+
+		if ( target )
+		{
+			pev->ideal_yaw = UTIL_VecToYaw( target->pev->origin - pev->origin );
+			ChangeYaw( pev->yaw_speed );
+		}
+
+		if ( m_fSequenceFinished )
+			TaskComplete();
 
 		return;
 	}
@@ -4292,14 +4309,17 @@ void CHGruntOp4Medic::RunTask( Task_t *task )
 		if ( !target )
 		{
 			if ( m_fSequenceFinished )
+			{
+				SetActivity( ACT_IDLE );
 				TaskComplete();
+			}
 
 			return;
 		}
 
 		CBaseMonster *monster = target->MyMonsterPointer();
 
-		MakeIdealYaw( target->pev->origin );
+		pev->ideal_yaw = UTIL_VecToYaw( m_hHealTarget->pev->origin - pev->origin );
 		ChangeYaw( pev->yaw_speed );
 
 		// a fading corpse stays visible while it is worked on
@@ -4308,20 +4328,31 @@ void CHGruntOp4Medic::RunTask( Task_t *task )
 		if ( !m_fSequenceFinished )
 			return;
 
-		if ( monster && !target->IsAlive() && monster->m_hHealer == this && IRelationship( target, true ) <= R_NO
-		     && !( target->pev->effects & EF_NODRAW ) && target->IsRevivable() )
+		if ( !target->IsAlive() && target->m_hHealer == this )
 		{
-			monster->m_flReviveTime = gpGlobals->time;
-			target->pev->flags |= FL_FROZEN;
-			monster->SetThink( &CBaseMonster::ReviveThink );
-			target->pev->nextthink = gpGlobals->time + 0.5f;
+			bool canRevive = true;
+
+			if ( monster )
+			{
+				bool hidden = ( monster->pev->effects & EF_NODRAW ) != 0;
+				canRevive = IRelationship( monster, true ) <= R_NO && !hidden;
+			}
+
+			if ( canRevive && target->IsRevivable() )
+			{
+				if ( monster )
+					monster->m_flReviveTime = gpGlobals->time;
+
+				target->pev->flags |= FL_FROZEN;
+				target->SetThink( &CBaseMonster::ReviveThink );
+				target->pev->nextthink = gpGlobals->time + 0.5f;
+			}
 		}
 
-		if ( monster )
-			monster->m_hHealer = NULL;
-
+		target->m_hHealer = NULL;
 		m_hHealTarget = NULL;
 		m_fReviving = false;
+		SetActivity( ACT_IDLE );
 		TaskComplete();
 		return;
 	}
@@ -4332,7 +4363,7 @@ void CHGruntOp4Medic::RunTask( Task_t *task )
 		ChangeYaw( pev->yaw_speed );
 
 		if ( FacingIdeal() )
-			TaskComplete();
+			m_iTaskStatus = TASKSTATUS_COMPLETE;
 
 		return;
 	}
@@ -4348,11 +4379,7 @@ void CHGruntOp4Medic::DropPatient( void )
 	if ( !patient )
 		return;
 
-	CBaseMonster *monster = patient->MyMonsterPointer();
-
-	if ( monster )
-		monster->m_hHealer = NULL;
-
+	patient->m_hHealer = NULL;
 	m_hHealTarget = NULL;
 	m_fReviving = false;
 }
@@ -4375,9 +4402,7 @@ CBaseEntity *CHGruntOp4Medic::BestVisibleDeadAlly( void )
 		     || entity->pev->renderamt <= MEDIC_CORPSE_MIN_RENDERAMT )
 			continue;
 
-		CBaseMonster *monster = entity->MyMonsterPointer();
-
-		if ( !monster || monster->m_hHealer != NULL || ( entity->pev->flags & FL_FROZEN ) || IRelationship( entity, true ) > R_NO )
+		if ( entity->m_hHealer != NULL || ( entity->pev->flags & FL_FROZEN ) || IRelationship( entity, true ) > R_NO )
 			continue;
 
 		// a monster corpse that began to fade shows again
@@ -4395,8 +4420,7 @@ CBaseEntity *CHGruntOp4Medic::BestVisibleDeadAlly( void )
 
 	for ( int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
-		CBaseEntity *client = UTIL_PlayerByIndex( i );
-		CBaseMonster *player = client ? client->MyMonsterPointer() : NULL;
+		CBaseEntity *player = UTIL_PlayerByIndex( i );
 
 		if ( !player || ( player->m_hHealer != NULL && player->m_hHealer != this ) || ( player->pev->flags & FL_FROZEN )
 		     || player->IsAlive() || IRelationship( player, true ) > R_NO )
@@ -4624,6 +4648,8 @@ Schedule_t *CHGruntOp4Medic::GetSchedule( void )
 	if ( m_Combat.m_fGunHolstered )
 		return GetScheduleOfType( SCHED_OP4_MEDIC_NEEDLE_DISARM );
 
+	Look( (int) m_flDistLook );
+
 	CBaseEntity *dead = BestVisibleDeadAlly();
 
 	if ( dead && ReviveMe( dead ) )
@@ -4631,9 +4657,6 @@ Schedule_t *CHGruntOp4Medic::GetSchedule( void )
 
 	if ( gpGlobals->time > m_flHealGiveUpTime )
 		DropPatient();
-
-	if ( m_hHealTarget != NULL && !m_fReviving && m_MonsterState != MONSTERSTATE_COMBAT )
-		return slOp4MedicHeal;
 
 	return GetCombatSchedule();
 }
@@ -4953,20 +4976,25 @@ void CHGruntOp4Medic::TalkInit( void )
 bool CHGruntOp4Medic::HealMePlayer( CBaseEntity *player )
 {
 	if ( !player || IRelationship( player, true ) > R_NO || pev->movetype == MOVETYPE_FLY
-	     || m_MonsterState == MONSTERSTATE_SCRIPT || !IsAlive() || m_hCineBlocker != NULL )
+	     || m_MonsterState == MONSTERSTATE_PRONE )
 		return false;
 
-	if ( m_hHealTarget != NULL )
+	CBaseEntity *patient = m_hHealTarget;
+
+	if ( patient && patient != player && !FClassnameIs( patient->pev, "monster_human_medic_ally" ) )
 		return false;
 
-	if ( !player->IsAlive() || player->pev->health >= player->pev->max_health )
+	if ( patient == player && player->m_hHealer == this )
 		return false;
 
-	m_Combat.m_hSavedTarget = m_hTargetEnt;
+	if ( !IsAlive() || m_pCine != NULL )
+		return false;
+
 	m_flHealGiveUpTime = gpGlobals->time + MEDIC_GIVE_UP_DELAY;
 	m_hHealTarget = player;
-	m_hTargetEnt = player;
-	ChangeSchedule( slOp4MedicHeal );
+	m_hTargetEnt = m_hHealTarget;
+	m_fReviving = !player->IsAlive();
+	ChangeSchedule( m_fReviving ? slOp4MedicRevive : slOp4MedicHeal );
 	return true;
 }
 
@@ -4986,7 +5014,7 @@ bool CSquadTalkMonster::HealMe( CBaseEntity *pTarget )
 	if ( !pMonster || pMonster->m_bloodColor == DONT_BLEED || pTarget->Classify() == CLASS_MACHINE )
 		return false;
 
-	if ( pTarget->pev->movetype == MOVETYPE_FLY || pev->movetype == MOVETYPE_FLY || m_MonsterState == MONSTERSTATE_SCRIPT )
+	if ( pTarget->pev->movetype == MOVETYPE_FLY || pev->movetype == MOVETYPE_FLY || m_MonsterState == MONSTERSTATE_PRONE )
 		return false;
 
 	// busy with another patient, unless that one is a medic
@@ -4995,7 +5023,7 @@ bool CSquadTalkMonster::HealMe( CBaseEntity *pTarget )
 	if ( pPatient && pPatient != pTarget && !FClassnameIs( pPatient->pev, "monster_human_medic_ally" ) )
 		return false;
 
-	if ( !IsAlive() || m_hCineBlocker != NULL )
+	if ( !IsAlive() || m_pCine != NULL )
 		return false;
 
 	// the goal is offset by whatever v_forward was made last
@@ -5024,7 +5052,7 @@ bool CSquadTalkMonster::ReviveMe( CBaseEntity *pTarget )
 	if ( pTarget->pev->movetype == MOVETYPE_FLY || ( pTarget->pev->effects & EF_NODRAW ) )
 		return false;
 
-	if ( pev->movetype == MOVETYPE_FLY || m_MonsterState == MONSTERSTATE_SCRIPT )
+	if ( pev->movetype == MOVETYPE_FLY || m_MonsterState == MONSTERSTATE_PRONE )
 		return false;
 
 	CBaseEntity *pPatient = m_hHealTarget;
@@ -5033,7 +5061,7 @@ bool CSquadTalkMonster::ReviveMe( CBaseEntity *pTarget )
 		return false;
 
 	// a corpse that no longer thinks can't come back
-	if ( !IsAlive() || m_hCineBlocker != NULL || !pTarget->m_pfnThink )
+	if ( !IsAlive() || m_pCine != NULL || !pTarget->m_pfnThink )
 		return false;
 
 	m_flHealGiveUpTime = gpGlobals->time + MEDIC_GIVE_UP_DELAY;

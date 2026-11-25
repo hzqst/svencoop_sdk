@@ -25,7 +25,7 @@ CBaseEntity *CopyValueHandleEntity( EHANDLE &handle )
 
 bool CopyValueEntityValid( CBaseEntity *entity )
 {
-	return entity && entity->pev && entity->pev->pContainingEntity && !entity->pev->pContainingEntity->free && ENTINDEX( entity->pev->pContainingEntity ) != 0;
+	return entity && entity->pev && entity->pev->pContainingEntity && !entity->pev->pContainingEntity->free && !FNullEnt( entity->pev->pContainingEntity );
 }
 
 void CopyValueSetHandle( EHANDLE &handle, CBaseEntity *entity )
@@ -192,6 +192,7 @@ void CTriggerCopyValue::GetEntityPointers( CBaseEntity *activator, CBaseEntity *
 	int unusedIndex;
 
 	m_DestinationType = destination->GetEntvar( STRING( m_iszDstValueName ), &m_pDstValue, m_iDstValueIndex );
+	source = CopyValueHandleEntity( m_hSource );
 	m_SourceType = source->GetEntvar( STRING( m_iszSrcValueName ), &m_pSrcValue, unusedIndex );
 	m_bUseKeyValue = false;
 
@@ -215,13 +216,11 @@ void CTriggerCopyValue::GetEntityPointers( CBaseEntity *activator, CBaseEntity *
 
 bool CTriggerCopyValue::TryKeyValue( char *value )
 {
-	CBaseEntity *destination = CopyValueHandleEntity( m_hDestination );
-
-	if ( !destination )
-		return false;
+	CBaseEntity *destination;
 
 	if ( m_iszValueType != VALUE_OP_REPLACE )
 	{
+		destination = CopyValueHandleEntity( m_hDestination );
 		ALERT( at_console, "Trigger_copyvalue \"%s\": The keyvalue by the name \"%s\" either does not exist or is an unsupported entity-specific keyvalue of class %s, and hence can only be replaced on your destination entity \"%s\".\n",
 		       STRING( pev->targetname ), STRING( m_iszDstValueName ), STRING( destination->pev->classname ), STRING( destination->pev->targetname ) );
 		return false;
@@ -232,23 +231,23 @@ bool CTriggerCopyValue::TryKeyValue( char *value )
 	memset( key, 0, sizeof( *key ) );
 	key->szKeyName = (char *) STRING( m_iszDstValueName );
 	key->szValue = value;
+	destination = CopyValueHandleEntity( m_hDestination );
 	destination->KeyValue( key );
 
 	bool handled = key->fHandled != FALSE;
-
-	delete key;
 
 	if ( !handled )
 	{
 		destination = CopyValueHandleEntity( m_hDestination );
 
-		if ( destination )
-			ALERT( at_console, "Trigger_copyvalue \"%s\": No keyvalue by the name \"%s\" does exist on %s \"%s\".\n",
-			       STRING( pev->targetname ), STRING( m_iszDstValueName ), STRING( destination->pev->classname ), STRING( destination->pev->targetname ) );
+		ALERT( at_console, "Trigger_copyvalue \"%s\": No keyvalue by the name \"%s\" does exist on %s \"%s\".\n",
+		       STRING( pev->targetname ), STRING( m_iszDstValueName ), STRING( destination->pev->classname ), STRING( destination->pev->targetname ) );
 
 		Reset();
 		SetThink( NULL );
 	}
+
+	delete key;
 
 	return handled;
 }
@@ -311,34 +310,45 @@ void CTriggerCopyValue::SpecialValueByteArray( int *value, const char *source, C
 	const char *previous = STRING( *value );
 	int length = strlen( source );
 	int previousLength = strlen( previous );
-	char buffer[VALUE_MAX_STRING + 1];
+	static char buffer[VALUE_MAX_STRING + 1];
 
-	if ( m_iAppendSpaces < 0 || m_iAppendSpaces > VALUE_MAX_STRING - length || ( m_iszValueType == VALUE_OP_CONCAT && previousLength > VALUE_MAX_STRING - length - m_iAppendSpaces ) )
+	int total = length + m_iAppendSpaces;
+
+	if ( total > VALUE_MAX_STRING )
 	{
-		int requested = (int) ( (unsigned int) length + (unsigned int) m_iAppendSpaces );
-
-		if ( m_iAppendSpaces >= 0 && m_iAppendSpaces <= VALUE_MAX_STRING - length && m_iszValueType == VALUE_OP_CONCAT )
-			requested += previousLength;
-
-		ALERT( at_console, "Trigger_copyvalue \"%s\": Too long string (%i > %i) used. Not performing operation.\n", STRING( pev->targetname ), requested, VALUE_MAX_STRING );
+		ALERT( at_console, "Trigger_copyvalue \"%s\": Too long string (%i > %i) used. Not performing operation.\n", STRING( pev->targetname ), total, VALUE_MAX_STRING );
 		return;
 	}
 
+	buffer[0] = 0;
 	int position = 0;
 
 	if ( m_iszValueType == VALUE_OP_CONCAT )
 	{
+		total += previousLength;
+
+		if ( total > VALUE_MAX_STRING )
+		{
+			ALERT( at_console, "Trigger_copyvalue \"%s\": Too long string (%i > %i) used. Not performing operation.\n", STRING( pev->targetname ), total, VALUE_MAX_STRING );
+			return;
+		}
+
 		memcpy( buffer, previous, previousLength );
 		position = previousLength;
 	}
-	else if ( m_iszValueType != VALUE_OP_REPLACE )
-		ALERT( at_console, "Trigger_copyvalue \"%s\": Tried using unknown or impossible operation %s on STRING keyvalue \"%s\".\n",
-		       STRING( pev->targetname ), ChangeValueTypeStr( m_iszValueType ), STRING( m_iszSrcValueName ) );
 
 	memcpy( buffer + position, source, length );
 	position += length;
-	memset( buffer + position, ' ', m_iAppendSpaces );
-	buffer[position + m_iAppendSpaces] = 0;
+
+	if ( m_iAppendSpaces > 0 )
+		memset( buffer + position, ' ', m_iAppendSpaces );
+
+	buffer[total] = 0;
+
+	if ( m_iszValueType != VALUE_OP_CONCAT && m_iszValueType != VALUE_OP_REPLACE )
+		ALERT( at_console, "Trigger_copyvalue \"%s\": Tried using unknown or impossible operation %s on STRING keyvalue \"%s\".\n",
+		       STRING( pev->targetname ), ChangeValueTypeStr( m_iszValueType ), STRING( m_iszSrcValueName ) );
+
 	*value = AllocStringLocal( buffer );
 }
 
@@ -509,10 +519,6 @@ void CTriggerCopyValue::SpecialValueInt( int *value, int source )
 		case VALUE_OP_DIVIDE:
 			if ( !source )
 				*value = *value < 0 ? INT_MIN : INT_MAX;
-			else if ( *value == INT_MIN && source == -1 )
-				// IDIV traps on this pair
-				// Keep the wrapped integer
-				*value = INT_MIN;
 			else
 				*value /= source;
 			break;
@@ -531,9 +537,12 @@ void CTriggerCopyValue::SpecialValueInt( int *value, int source )
 		case VALUE_OP_MODULO:
 			if ( source )
 			{
-				long long divisor = source < 0 ? -(long long) source : source;
+				int divisor = abs( source );
 
-				*value = (int) ( (long long) *value % divisor );
+				if ( *value < 0 )
+					*value = -( -*value % divisor );
+				else
+					*value %= divisor;
 			}
 			break;
 		case VALUE_OP_XOR:
@@ -555,16 +564,12 @@ void CTriggerCopyValue::SpecialValueInt( int *value, int source )
 
 void CTriggerCopyValue::CopyValue( void )
 {
-	static string_t emptyValue;
-
 	m_pNextTarget = NULL;
 
 	for ( ;; )
 	{
 		if ( !CopyValueHandleEntity( m_hSource ) || !CopyValueHandleEntity( m_hDestination ) || ( pev->spawnflags & SF_COPYVALUE_MULTIPLE_DESTINATIONS ) )
 		{
-			CBaseEntity *previous = m_pNextTarget;
-
 			m_hSource = EHANDLE();
 			m_hDestination = EHANDLE();
 			GetEntityPointers( CopyValueHandleEntity( m_hActivator ), CopyValueHandleEntity( m_hCaller ) );
@@ -572,24 +577,21 @@ void CTriggerCopyValue::CopyValue( void )
 
 			if ( !CopyValueHandleEntity( m_hSource ) || !CopyValueHandleEntity( m_hDestination ) )
 				break;
-
-			// Special target names keep returning the same entity
-			if ( ( pev->spawnflags & SF_COPYVALUE_MULTIPLE_DESTINATIONS ) && previous && m_pNextTarget == previous )
-				break;
 		}
 
 		if ( m_DestinationType == VAR_INVALID )
 		{
 			m_DestinationType = VAR_STRING;
-			m_pDstValue = &emptyValue;
+			m_pDstValue = const_cast<char *>( "" );
 			m_bUseKeyValue = true;
 		}
 
 		CBaseEntity *destination = CopyValueHandleEntity( m_hDestination );
 		char buffer[100];
 		bool stringResult = false;
+		entvartype_s sourceType = m_SourceType;
 
-		switch ( m_SourceType )
+		switch ( sourceType )
 		{
 			case VAR_VECTOR:
 				if ( m_DestinationType == VAR_FLOAT || m_DestinationType == VAR_INTEGER )
@@ -604,22 +606,18 @@ void CTriggerCopyValue::CopyValue( void )
 				}
 				else if ( m_DestinationType == VAR_VECTOR )
 				{
-					Vector value = *(Vector *) m_pSrcValue;
-
 					if ( m_iszValueType == VALUE_OP_DIR_TO_ANGLES )
 					{
 						Vector angles;
 
-						VEC_TO_ANGLES( value, angles );
-						// Keep the fixed-size result automatic
-
+						VEC_TO_ANGLES( *(Vector *) m_pSrcValue, angles );
 						for ( int index = 0; index < 3; index++ )
 							if ( !( pev->spawnflags & ( 1 << index ) ) )
 								( (float *) m_pDstValue )[index] = angles[index];
 					}
 					else if ( m_iszValueType == VALUE_OP_ANGLES_TO_DIR )
 					{
-						UTIL_MakeVectors( value );
+						UTIL_MakeVectors( *(Vector *) m_pSrcValue );
 
 						for ( int index = 0; index < 3; index++ )
 							if ( !( pev->spawnflags & ( 1 << index ) ) )
@@ -647,20 +645,20 @@ void CTriggerCopyValue::CopyValue( void )
 			case VAR_FLOAT:
 			case VAR_INTEGER:
 			{
-				float value = m_SourceType == VAR_FLOAT ? *(float *) m_pSrcValue : (float) *(int *) m_pSrcValue;
+				float value = sourceType == VAR_FLOAT ? *(float *) m_pSrcValue : (float) *(int *) m_pSrcValue;
 
 				if ( m_DestinationType == VAR_VECTOR )
 				{
 					for ( int index = 0; index < 3; index++ )
 						if ( !( pev->spawnflags & ( 1 << index ) ) )
 							SpecialValueFloat( (float *) m_pDstValue + index,
-							                   m_SourceType == VAR_FLOAT ? *(float *) m_pSrcValue : (float) *(int *) m_pSrcValue );
+							                   sourceType == VAR_FLOAT ? *(float *) m_pSrcValue : (float) *(int *) m_pSrcValue );
 				}
 				else if ( m_DestinationType == VAR_FLOAT )
 					SpecialValueFloat( (float *) m_pDstValue, value );
 				else if ( m_DestinationType == VAR_INTEGER )
 				{
-					if ( m_SourceType == VAR_INTEGER )
+					if ( sourceType == VAR_INTEGER )
 						SpecialValueInt( (int *) m_pDstValue, *(int *) m_pSrcValue );
 					else if ( m_iFloatConversion == 17 )
 						SpecialValueInt( (int *) m_pDstValue, (int) (float) ceil( value ) );
@@ -671,7 +669,7 @@ void CTriggerCopyValue::CopyValue( void )
 				}
 				else if ( m_DestinationType == VAR_STRING )
 				{
-					if ( m_SourceType == VAR_INTEGER )
+					if ( sourceType == VAR_INTEGER )
 						UTIL_FormatString( buffer, 12, "%i", *(int *) m_pSrcValue );
 					else
 						WriteFloatToString( buffer, 32, value, m_iFloatConversion );
@@ -682,71 +680,80 @@ void CTriggerCopyValue::CopyValue( void )
 			}
 			case VAR_STRING:
 			{
-				const char *value = STRING( *(string_t *) m_pSrcValue );
-
 				if ( m_DestinationType == VAR_VECTOR )
 				{
-					Vector vector;
+					float *parsed = new float[3];
+					const char *value = STRING( *(string_t *) m_pSrcValue );
 
-					UTIL_StringToVector( vector, value, ' ' );
+					UTIL_StringToVector( parsed, value, ' ' );
+					int operation = m_iszValueType;
 
-					if ( m_iszValueType == VALUE_OP_DIR_TO_ANGLES )
+					if ( operation == VALUE_OP_DIR_TO_ANGLES )
 					{
-						Vector angles;
+						Vector vector( parsed );
+						Vector angles = UTIL_VecToAngles( vector );
 
-						VEC_TO_ANGLES( vector, angles );
-						vector = angles;
+						for ( int index = 0; index < 3; index++ )
+							if ( !( pev->spawnflags & ( 1 << index ) ) )
+								( (float *) m_pDstValue )[index] = angles[index];
 					}
-					else if ( m_iszValueType == VALUE_OP_ANGLES_TO_DIR )
+					else if ( operation == VALUE_OP_ANGLES_TO_DIR )
 					{
+						Vector vector( parsed );
+
 						UTIL_MakeVectors( vector );
-						vector = gpGlobals->v_forward;
-					}
 
-					for ( int index = 0; index < 3; index++ )
-					{
-						if ( pev->spawnflags & ( 1 << index ) )
-							continue;
-
-						if ( m_iszValueType == VALUE_OP_DIR_TO_ANGLES || m_iszValueType == VALUE_OP_ANGLES_TO_DIR )
-							( (float *) m_pDstValue )[index] = vector[index];
-						else
-							SpecialValueFloat( (float *) m_pDstValue + index, vector[index] );
-					}
-				}
-				else if ( m_DestinationType == VAR_FLOAT )
-					SpecialValueFloat( (float *) m_pDstValue, (float) atof( value ) );
-				else if ( m_DestinationType == VAR_INTEGER )
-				{
-					if ( *value >= 'A' && *value <= 'Z' )
-					{
-						bool valid = false;
-						int integer = ValueForPEVFlag( value, m_iDstValueIndex, valid );
-
-						if ( valid )
-							SpecialValueInt( (int *) m_pDstValue, integer );
-						else
-							ALERT( at_console, "Trigger_copyvalue \"%s\": Unknown value-identifier \"%s\" for target keyvalue \"%s\".\n",
-							       STRING( pev->targetname ), value, STRING( m_iszDstValueName ) );
+						for ( int index = 0; index < 3; index++ )
+							if ( !( pev->spawnflags & ( 1 << index ) ) )
+								( (float *) m_pDstValue )[index] = gpGlobals->v_forward[index];
 					}
 					else
-						SpecialValueInt( (int *) m_pDstValue, atoi( value ) );
-				}
-				else if ( m_DestinationType == VAR_STRING )
-				{
-					if ( m_bUseKeyValue )
 					{
-						if ( !TryKeyValue( (char *) value ) )
-							return;
+						for ( int index = 0; index < 3; index++ )
+							if ( !( pev->spawnflags & ( 1 << index ) ) )
+								SpecialValueFloat( (float *) m_pDstValue + index, parsed[index] );
 					}
-					else
-						SpecialValueByteArray( (int *) m_pDstValue, value, destination );
-				}
-				else if ( m_DestinationType == VAR_EDICT && m_pDstValue )
-				{
-					CBaseEntity *entity = UTIL_FindEntityByTargetname( NULL, value );
 
-					*(edict_t **) m_pDstValue = entity && entity->pev ? entity->edict() : NULL;
+					delete[] parsed;
+				}
+				else
+				{
+					const char *value = STRING( *(string_t *) m_pSrcValue );
+
+					if ( m_DestinationType == VAR_FLOAT )
+						SpecialValueFloat( (float *) m_pDstValue, (float) atof( value ) );
+					else if ( m_DestinationType == VAR_INTEGER )
+					{
+						if ( *value >= 'A' && *value <= 'Z' )
+						{
+							bool valid = false;
+							int integer = ValueForPEVFlag( value, m_iDstValueIndex, valid );
+
+							if ( valid )
+								SpecialValueInt( (int *) m_pDstValue, integer );
+							else
+								ALERT( at_console, "Trigger_copyvalue \"%s\": Unknown value-identifier \"%s\" for target keyvalue \"%s\".\n",
+								       STRING( pev->targetname ), value, STRING( m_iszDstValueName ) );
+						}
+						else
+							SpecialValueInt( (int *) m_pDstValue, atoi( value ) );
+					}
+					else if ( m_DestinationType == VAR_STRING )
+					{
+						if ( m_bUseKeyValue )
+						{
+							if ( !TryKeyValue( (char *) value ) )
+								return;
+						}
+						else
+							SpecialValueByteArray( (int *) m_pDstValue, value, destination );
+					}
+					else if ( m_DestinationType == VAR_EDICT && m_pDstValue )
+					{
+						CBaseEntity *entity = UTIL_FindEntityByTargetname( NULL, value );
+
+						*(edict_t **) m_pDstValue = entity ? entity->edict() : NULL;
+					}
 				}
 				break;
 			}
@@ -755,8 +762,9 @@ void CTriggerCopyValue::CopyValue( void )
 				{
 					edict_t *entity = *(edict_t **) m_pSrcValue;
 
-					if ( entity && !entity->free && ENTINDEX( entity ) != 0 )
+					if ( entity && !entity->free && !FNullEnt( entity ) )
 					{
+						entity = *(edict_t **) m_pSrcValue;
 						const char *value = STRING( entity->v.targetname );
 
 						if ( m_bUseKeyValue )
@@ -779,7 +787,7 @@ void CTriggerCopyValue::CopyValue( void )
 					{
 						CBaseEntity *source = CopyValueHandleEntity( m_hSource );
 
-						*(edict_t **) m_pDstValue = source && source->pev ? source->edict() : NULL;
+						*(edict_t **) m_pDstValue = source ? source->edict() : NULL;
 					}
 				}
 				break;
@@ -798,16 +806,10 @@ void CTriggerCopyValue::CopyValue( void )
 
 		destination = CopyValueHandleEntity( m_hDestination );
 
-		if ( !destination )
-		{
-			Reset();
-			SetThink( NULL );
-			return;
-		}
-
 		if ( m_iDstValueIndex == 2 )
 			UTIL_SetOrigin( destination->pev, destination->pev->origin );
 
+		destination = CopyValueHandleEntity( m_hDestination );
 		destination->OnKeyValueUpdate( STRING( m_iszDstValueName ) );
 
 		if ( !( pev->spawnflags & SF_COPYVALUE_MULTIPLE_DESTINATIONS ) )

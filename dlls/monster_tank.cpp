@@ -23,8 +23,12 @@ void CBaseMonster::CheckSelectedTank( void )
 	if ( IsMoving() || !MonsterTankHandle( m_hSelectedTank ) )
 		return;
 
-	if ( m_pSchedule && m_pSchedule == GetScheduleOfType( SCHED_MOVE_TO_TANK ) )
-		return;
+	if ( m_pSchedule )
+	{
+		Schedule_t *tankSchedule = GetScheduleOfType( SCHED_MOVE_TO_TANK );
+		if ( m_pSchedule == tankSchedule )
+			return;
+	}
 
 	if ( HasConditions( bits_COND_CAN_USE_TANK ) )
 		ChangeSchedule( GetScheduleOfType( SCHED_MOVE_TO_TANK ) );
@@ -32,8 +36,12 @@ void CBaseMonster::CheckSelectedTank( void )
 
 bool CBaseMonster::CheckTankUsage( void )
 {
-	if ( m_pSchedule && m_pSchedule == GetScheduleOfType( SCHED_MOVE_TO_TANK ) )
-		return false;
+	if ( m_pSchedule )
+	{
+		Schedule_t *tankSchedule = GetScheduleOfType( SCHED_MOVE_TO_TANK );
+		if ( m_pSchedule == tankSchedule )
+			return false;
+	}
 
 	if ( !( gpGlobals->time >= m_flNextTankSearchTime ) && !HasConditions( bits_COND_NEW_ENEMY ) )
 		return false;
@@ -101,7 +109,7 @@ CFuncTank *CBaseMonster::FindTank( void )
 
 		Vector2D direction = ( enemy->pev->origin - tank->pev->origin ).Make2D().Normalize();
 
-		if ( !( 1.0f - tank->m_yawRange / 100.0f <= DotProduct( direction, gpGlobals->v_forward.Make2D() ) ) )
+		if ( 1.0f - tank->m_yawRange / 100.0f > DotProduct( direction, gpGlobals->v_forward.Make2D() ) )
 			continue;
 
 		best = tank;

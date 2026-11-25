@@ -379,7 +379,11 @@ public:
 	virtual void Kill( void );
 	virtual void AttachToPlayer ( CBasePlayer *pPlayer );
 	bool Unhook( void );
+#ifndef CLIENT_DLL
+	virtual void DetachFromPlayer( void );
+#else
 	void DetachFromPlayer( void );
+#endif
 
 	virtual int PrimaryAmmoIndex() { return -1; };
 	virtual int SecondaryAmmoIndex() { return -1; };
@@ -654,6 +658,7 @@ public:
 	int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
+	static CWeaponBox *CreateWeaponBox( const Vector &origin, const Vector &angles, const Vector &direction, edict_t *owner );
 	bool HasWeapon( const char *classname );
 	bool PackWeapon( CBasePlayerItem *pWeapon );
 	bool PackAmmo( int iszName, int iCount );

@@ -57,7 +57,9 @@ CASFile *CASVirtualFileSystem::OpenFile(const char *fileName, OpenFileFlags_t fl
 	if (!CanAccessDirectory(directory.Data(), moduleType, access, &pDirectory))
 		return NULL;
 
-	if (writing && (!m_pFileQuota->CanWriteAmount(MINIMUM_WRITE_SPACE) || m_pFileQuota->FileLimitReached()))
+	CASFileQuota *pQuota = m_pFileQuota;
+
+	if (writing && (!pQuota->CanWriteAmount(MINIMUM_WRITE_SPACE) || pQuota->FileLimitReached()))
 		return NULL;
 
 	CString fullPath(directory);
@@ -79,9 +81,9 @@ CASFile *CASVirtualFileSystem::OpenFile(const char *fileName, OpenFileFlags_t fl
 	}
 
 	if (writing)
-		m_pFileQuota->AddWriteFileToList(fullPath, flags);
+		pQuota->AddWriteFileToList(fullPath, flags);
 
-	unsigned int bytesWritten = flags & OpenFileFlagBit::APPEND ? m_pFileQuota->GetBytesWrittenToFile(fullPath) : 0;
+	unsigned int bytesWritten = flags & OpenFileFlagBit::APPEND ? pQuota->GetBytesWrittenToFile(fullPath) : 0;
 
 	return new CASFile(this, pDirectory, fullPath.Data(), flags, file, bytesWritten);
 }

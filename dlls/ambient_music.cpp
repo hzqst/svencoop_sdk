@@ -142,7 +142,7 @@ void CAmbientMusic::Play( float offset )
 	m_flStartTime = gpGlobals->time;
 	m_Clients.clear();
 	UpdateClients( offset );
-	SetThink( NULL );
+	SetThink( &CAmbientMusic::Think );
 	pev->nextthink = pev->ltime + 1.0f;
 }
 
@@ -166,7 +166,13 @@ void CAmbientMusic::PlayForActivator( CBaseEntity *activator, float offset )
 	CBasePlayer *player = dynamic_cast<CBasePlayer *>( activator );
 
 	if ( !CheckClient( player ) )
-		NotifyClient( true, player->entindex(), offset );
+	{
+		edict_t *recipient = NULL;
+		if ( player->pev )
+			recipient = player->edict();
+
+		NotifyClient( true, ENTINDEX( recipient ), offset );
+	}
 }
 
 void CAmbientMusic::StopForActivator( CBaseEntity *activator )
@@ -177,13 +183,19 @@ void CAmbientMusic::StopForActivator( CBaseEntity *activator )
 	CBasePlayer *player = dynamic_cast<CBasePlayer *>( activator );
 
 	if ( !CheckClient( player ) )
-		NotifyClient( false, player->entindex(), 0 );
+	{
+		edict_t *recipient = NULL;
+		if ( player->pev )
+			recipient = player->edict();
+
+		NotifyClient( false, ENTINDEX( recipient ), 0 );
+	}
 }
 
 void CAmbientMusic::Think()
 {
 	UpdateClients();
-	SetThink( NULL );
+	SetThink( &CAmbientMusic::Think );
 	pev->nextthink = pev->ltime + 1.0f;
 }
 

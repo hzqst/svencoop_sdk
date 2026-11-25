@@ -22,6 +22,23 @@ const char *ConCommandKindToString(ConCommandKind::Type kind)
 	}
 }
 
+ConCommandKind::Type StringToConCommandKind(const char *text)
+{
+	if (!text || !*text || !stricmp(text, "None"))
+		return ConCommandKind::None;
+
+	if (!stricmp(text, "ConCommand"))
+		return ConCommandKind::ConCommand;
+
+	if (!stricmp(text, "ClientCommand"))
+		return ConCommandKind::ClientCommand;
+
+	if (!stricmp(text, "CVar"))
+		return ConCommandKind::CVar;
+
+	return ConCommandKind::None;
+}
+
 void ConsoleOutput(edict_s *player, const char *format, ...)
 {
 	char buffer[4096];

@@ -85,7 +85,10 @@ void CTriggerChangeClass::ChangeClass( CBaseEntity *entity, USE_TYPE useType )
 			}
 			break;
 		case USE_TOGGLE:
-			if ( entity->Classify() == m_iNewClass || m_iNewClass == -1 )
+		{
+			const int comparisonClass = m_iNewClass;
+
+			if ( entity->Classify() == comparisonClass || comparisonClass == -1 )
 				entity->m_fOverrideClass = false;
 			else
 			{
@@ -93,6 +96,7 @@ void CTriggerChangeClass::ChangeClass( CBaseEntity *entity, USE_TYPE useType )
 				entity->m_iClassSelection = m_iNewClass;
 			}
 			break;
+		}
 	}
 
 	if ( hadOverride != entity->m_fOverrideClass || oldClass != entity->m_iClassSelection )

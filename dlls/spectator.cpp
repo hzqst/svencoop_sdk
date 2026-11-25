@@ -87,7 +87,7 @@ void CBaseSpectator::SpectatorImpulseCommand(void)
 				break;
 			}
 			// Found a non-world entity, set success, otherwise, look for the next one.
-			if (!FNullEnt(pCurrentGoal))
+			if (pCurrentGoal && !pCurrentGoal->free && !FNullEnt(pCurrentGoal))
 			{
 				bFound = TRUE;
 				break;
@@ -98,8 +98,7 @@ void CBaseSpectator::SpectatorImpulseCommand(void)
 			break;
 		
 		pGoal = pCurrentGoal;
-		UTIL_SetOrigin( pev, pGoal->v.origin );
-		pev->angles = pGoal->v.angles;
+		Teleport( pGoal->v.origin, pGoal->v.angles );
 		pev->fixangle = FALSE;
 		break;
 	default:

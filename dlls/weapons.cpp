@@ -686,7 +686,8 @@ bool CBasePlayerWeapon::ShouldReload( void )
 	if ( m_iClip != 0 || ( iFlags() & ITEM_FLAG_NOAUTORELOAD ) )
 		return false;
 
-	return m_flNextPrimaryAttack < ( UseDecrement() ? 0.0 : gpGlobals->time );
+	const float currentTime = UseDecrement() ? 0.0f : gpGlobals->time;
+	return m_flNextPrimaryAttack < currentTime;
 }
 
 void CBasePlayerWeapon::Reload( void )
@@ -711,7 +712,7 @@ void CBasePlayerWeapon::AddToPlayerMessage( void )
 	if ( !player )
 		return;
 
-	MESSAGE_BEGIN( MSG_ONE, gmsgWeapPickup, NULL, player->pev );
+	MESSAGE_BEGIN( MSG_ONE, gmsgWeapPickup, NULL, ENT( player->pev ) );
 		WRITE_SHORT( m_iId );
 	MESSAGE_END();
 }
@@ -758,8 +759,6 @@ void CBasePlayerItem::OnCreate( void )
 
 	m_bIsBeingRemoved = false;
 
-	m_flLastBounce = 0;
-
 	m_vecMinHullSize = Vector( -0.9f, -0.9f, 0 );
 	m_vecMaxHullSize = Vector( 0.9f, 0.9f, 1.9f );
 	m_iBounceMaterial = 5;
@@ -770,8 +769,6 @@ void CBasePlayerWeapon::OnCreate( void )
 	CBasePlayerItem::OnCreate();
 	m_iClip = 0;
 	m_iClip2 = -1;
-
-	m_flNextBurstRound = 0;
 }
 
 void CBasePlayerItem::Collect( CBaseEntity *other )
@@ -864,17 +861,32 @@ void CBasePlayerItem::KeyValue( KeyValueData *data )
 		CBasePickupObject::KeyValue( data );
 }
 
+static CBasePlayer *GetPickupOwner( edict_t *owner )
+{
+	if ( !owner )
+		owner = ENT( 0 );
+
+	if ( !owner || owner->free )
+		return NULL;
+
+	CBaseEntity *entity = CBaseEntity::Instance( owner );
+	return entity && entity->IsPlayer() ? dynamic_cast<CBasePlayer *>( entity ) : NULL;
+}
+
 bool CBasePlayerItem::CanCollect( CBaseEntity *other, COLLECT_TYPE collectType )
 {
-	if ( !CBasePickupObject::CanCollect( other, collectType ) || !other->IsPlayer() )
+	if ( !CBasePickupObject::CanCollect( other, collectType ) )
 		return false;
 
-	CBasePlayer *player = (CBasePlayer *) other;
-	CBaseEntity *owner = CBaseEntity::Instance( pev->owner );
+	CBasePlayer *player = dynamic_cast<CBasePlayer *>( other );
+	if ( !player )
+		return false;
 
-	if ( owner && owner->IsPlayer() && m_iUnknown180 == 2 && m_flCreationTime + 30 > gpGlobals->time && owner != player )
+	CBasePlayer *owner = GetPickupOwner( pev->owner );
+
+	if ( owner && m_iUnknown180 == 2 && m_flCreationTime + 30 > gpGlobals->time && owner != player )
 	{
-		if ( !( (CBasePlayer *) owner )->IsGibbed() )
+		if ( !owner->IsGibbed() )
 			return false;
 	}
 
@@ -894,10 +906,10 @@ bool CBasePlayerItem::CanCollect( CBaseEntity *other, COLLECT_TYPE collectType )
 
 void CBasePlayerItem::Collect( CBaseEntity *other, COLLECT_TYPE collectType )
 {
-	if ( !other || !other->IsPlayer() )
+	CBasePlayer *player = dynamic_cast<CBasePlayer *>( other );
+	if ( !player )
 		return;
 
-	CBasePlayer *player = (CBasePlayer *) other;
 	int result = player->AddPlayerItem( this );
 
 	if ( result < APIR_DuplicateAdd )
@@ -909,7 +921,8 @@ void CBasePlayerItem::Collect( CBaseEntity *other, COLLECT_TYPE collectType )
 		AttachToPlayer( player );
 	}
 
-	EMIT_SOUND_DYN( player->edict(), CHAN_ITEM, GetPickupSound(), 1, ATTN_NORM, 0, PITCH_NORM );
+	const char *sample = GetPickupSound();
+	EMIT_SOUND_DYN( player->edict(), CHAN_ITEM, sample, 1, ATTN_NORM, 0, PITCH_NORM );
 	Collected( other, collectType );
 }
 
@@ -923,7 +936,7 @@ void CBasePlayerItem::UpdateCustomSpriteDir( CBasePlayer *player )
 	if ( !player )
 		return;
 
-	MESSAGE_BEGIN( MSG_ONE, gmsgCustomWeaponDir, NULL, player->pev );
+	MESSAGE_BEGIN( MSG_ONE, gmsgCustomWeaponDir, NULL, ENT( player->pev ) );
 	WRITE_SHORT( m_iId );
 	WRITE_STRING( STRING( m_iszCustomSpriteDir ) );
 	MESSAGE_END();
@@ -934,7 +947,7 @@ void CBasePlayerItem::LoadSprites( CBasePlayer *player, const char *name )
 	if ( !player )
 		return;
 
-	MESSAGE_BEGIN( MSG_ONE, gmsgWeaponSprites, NULL, player->pev );
+	MESSAGE_BEGIN( MSG_ONE, gmsgWeaponSprites, NULL, ENT( player->pev ) );
 	WRITE_SHORT( m_iId );
 	WRITE_STRING( name );
 	MESSAGE_END();
@@ -973,6 +986,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		m_hPlayer->pev->button &= ~IN_ATTACK2;
 
 		SecondaryAttack();
+		g_WeaponSecondaryAttackHook.Call( 0, ResolveWeaponPlayer( m_hPlayer ), this );
 	}
 	else if ((m_hPlayer->pev->button & IN_ATTACK) && CanAttack( m_flNextPrimaryAttack, gpGlobals->time, UseDecrement() ) )
 	{
@@ -982,6 +996,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		}
 
 		PrimaryAttack();
+		g_WeaponPrimaryAttackHook.Call( 0, ResolveWeaponPlayer( m_hPlayer ), this );
 	}
 	else if ( ( m_hPlayer->pev->button & IN_ALT1 )
 		&& CanAttack( m_flNextTertiaryAttack, gpGlobals->time, UseDecrement() ) )
@@ -1002,7 +1017,14 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 
 		m_fFireOnEmpty = FALSE;
 
-		if ( !IsUseable() && m_flNextPrimaryAttack < ( UseDecrement() ? 0.0 : gpGlobals->time ) )
+		bool tryAutoSwitch = false;
+		if ( !IsUseable() )
+		{
+			const float currentTime = UseDecrement() ? 0.0f : gpGlobals->time;
+			tryAutoSwitch = m_flNextPrimaryAttack < currentTime;
+		}
+
+		if ( tryAutoSwitch )
 		{
 			// weapon isn't useable, switch.
 			if ( !( m_hPlayer->pev->flags & FL_FROZEN ) && !(iFlags() & ITEM_FLAG_NOAUTOSWITCHEMPTY) && g_pGameRules->GetNextBestWeapon( m_hPlayer, this ) )
@@ -1081,7 +1103,7 @@ bool CBasePlayerItem::Unhook( void )
 
 void CBasePlayerItem::DetachFromPlayer( void )
 {
-	if ( !pev->owner || pev->owner->free || !ENTINDEX( pev->owner ) )
+	if ( !pev->owner || pev->owner->free || !OFFSET( pev->owner ) )
 		return;
 
 	CBasePlayer *player = m_hPlayer;
@@ -1091,7 +1113,7 @@ void CBasePlayerItem::DetachFromPlayer( void )
 
 	Unhook();
 
-	SetModel_Intercept( edict(), STRING( m_iszWorldModel ) );
+	SetModel_Intercept( ENT( pev ), STRING( m_iszWorldModel ) );
 	pev->effects &= ~EF_NODRAW;
 }
 
@@ -1120,13 +1142,15 @@ void CBasePlayerItem::Holster( int skiplocal ) {
 void CBasePlayerItem::AttachToPlayer ( CBasePlayer *pPlayer ) {
 	pev->movetype = MOVETYPE_FOLLOW;
 	pev->solid = SOLID_NOT;
-	pev->aiment = pPlayer->edict();
+	edict_t *playerEdict = pPlayer->edict();
+	pev->aiment = playerEdict;
 	pev->effects = EF_NODRAW; // ??
 	pev->modelindex = 0;// server won't send down to clients if modelindex == 0
 	pev->model = iStringNull;
-	pev->owner = pPlayer->edict();
+	pev->owner = playerEdict;
 	pev->nextthink = gpGlobals->time + .1;
 	SetTouch( NULL );
+	SetUse( NULL );
 }
 
 // CALLED THROUGH the newly-touched weapon's instance. The existing player weapon is pOriginal
@@ -1153,7 +1177,7 @@ BOOL CBasePlayerWeapon::AddAmmoFromItem( CBasePlayerItem *item )
 
 BOOL CBasePlayerWeapon::ExtractAmmoFromItem( CBasePlayerItem *item )
 {
-	CBasePlayerWeapon *weapon = item ? (CBasePlayerWeapon *) item->GetWeaponPtr() : NULL;
+	CBasePlayerWeapon *weapon = dynamic_cast<CBasePlayerWeapon *>( item );
 
 	if ( m_iDefaultAmmo > 0 || m_iDefaultSecAmmo > 0 )
 		return ExtractAmmo( weapon );
@@ -1250,7 +1274,8 @@ void CBasePlayerWeapon::SendWeaponAnim( int iAnim, int skiplocal, int body )
     if( !m_hPlayer )
         return;
 
-    m_hPlayer->pev->weaponanim = iAnim;
+    entvars_t *playerVars = m_hPlayer->pev;
+    playerVars->weaponanim = iAnim;
     m_iBody = body;
 
     //skiplocal = "IS A CLIENT WEAPON"
@@ -1259,18 +1284,20 @@ void CBasePlayerWeapon::SendWeaponAnim( int iAnim, int skiplocal, int body )
     if ( skiplocal && ENGINE_CANSKIP( m_hPlayer->edict() ) )
         return;
 
+    edict_t *recipient = m_hPlayer->edict();
+
     // GeckoN: HACK: Extended version of svc_weaponanim (sends "body" as int instead of byte)
     // GeckoN: TODO: Remove this when we have a better way to add protocol extensions
     if ( body > 255 )
     {
-        MESSAGE_BEGIN( MSG_ONE, SVC_WEAPONANIMEX, NULL, m_hPlayer->pev );
+        MESSAGE_BEGIN( MSG_ONE, SVC_WEAPONANIMEX, NULL, recipient );
             WRITE_BYTE( iAnim );                // sequence number
             WRITE_LONG( body );                    // weaponmodel bodygroup. // Changed from pev->body to body -SvenV
         MESSAGE_END();
     }
     else
     {
-        MESSAGE_BEGIN( MSG_ONE, SVC_WEAPONANIM, NULL, m_hPlayer->pev );
+        MESSAGE_BEGIN( MSG_ONE, SVC_WEAPONANIM, NULL, recipient );
             WRITE_BYTE( iAnim );                // sequence number
             WRITE_BYTE( body );                    // weaponmodel bodygroup. // Changed from pev->body to body -SvenV
         MESSAGE_END();
@@ -1281,10 +1308,6 @@ void CBasePlayerWeapon::SendWeaponAnim( int iAnim, int skiplocal, int body )
 int CBasePlayerWeapon :: AddPrimaryAmmo( int iCount, char *szName, int iMaxClip, int iMaxCarry, int *amountGiven )
 {
 	int clipGiven = 0;
-	int localAmountGiven = 0;
-
-	if ( !amountGiven )
-		amountGiven = &localAmountGiven;
 
 	if ( iMaxClip < 1 )
 		m_iClip = WEAPON_NOCLIP;
@@ -1299,7 +1322,8 @@ int CBasePlayerWeapon :: AddPrimaryAmmo( int iCount, char *szName, int iMaxClip,
 	if ( clipGiven > 0 )
 	{
 		ammoIndex = CBasePlayer::GetAmmoIndex( szName );
-		*amountGiven += clipGiven;
+		if ( amountGiven )
+			*amountGiven += clipGiven;
 	}
 
 	if ( ammoIndex > 0 )
@@ -1400,7 +1424,7 @@ const char *CBasePlayerWeapon::GetP_Model( const char *model )
 
 	if ( g_szModelReplacement && model )
 	{
-		CWorld *world = (CWorld *) CBaseEntity::Instance( INDEXENT( 0 ) );
+		CWorld *world = GetModelReplacementWorld();
 
 		model = world->MODELREPLACEMENT_Find( model );
 	}
@@ -1415,7 +1439,7 @@ const char *CBasePlayerWeapon::GetW_Model( const char *model )
 
 	if ( g_szModelReplacement && model )
 	{
-		CWorld *world = (CWorld *) CBaseEntity::Instance( INDEXENT( 0 ) );
+		CWorld *world = GetModelReplacementWorld();
 
 		model = world->MODELREPLACEMENT_Find( model );
 	}
@@ -1430,7 +1454,7 @@ const char *CBasePlayerWeapon::GetV_Model( const char *model )
 
 	if ( g_szModelReplacement && model )
 	{
-		CWorld *world = (CWorld *) CBaseEntity::Instance( INDEXENT( 0 ) );
+		CWorld *world = GetModelReplacementWorld();
 
 		model = world->MODELREPLACEMENT_Find( model );
 	}
@@ -1470,7 +1494,7 @@ bool CBasePlayerWeapon :: DefaultDeploy( const char *szViewModel, const char *sz
 	if ( !player )
 		return FALSE;
 
-	player->m_fGrappleActive = FALSE;
+	player->m_fGrappleFired = false;
 
 	m_hPlayer->pev->viewmodel = MAKE_STRING(szViewModel);
 	m_hPlayer->pev->weaponmodel = MAKE_STRING(szWeaponModel);
@@ -1810,7 +1834,7 @@ void CWeaponBox :: KeyValue( KeyValueData *data )
 
 	if ( count > 0 )
 	{
-		PackAmmo( ALLOC_STRING( ammoName ), count );
+		PackAmmo( AllocStringLocal( ammoName ), count );
 		++m_cAmmoTypes;
 	}
 
@@ -1830,8 +1854,7 @@ bool CWeaponBox::CanCollect( CBaseEntity *other, COLLECT_TYPE collectType )
 	if ( m_hExclusiveHoldItem && m_hExclusiveHoldItem->m_bExclusiveHold && player->IsExclusiveHoldItemActive() )
 		return false;
 
-	CBaseEntity *ownerEntity = Instance( pev->owner );
-	CBasePlayer *owner = ownerEntity && ownerEntity->IsPlayer() ? dynamic_cast<CBasePlayer *>( ownerEntity ) : NULL;
+	CBasePlayer *owner = GetPickupOwner( pev->owner );
 
 	if ( owner && m_iUnknown180 == 2 && m_flCreationTime + 30 > gpGlobals->time
 	     && owner != player && !owner->IsGibbed() )
@@ -1889,7 +1912,7 @@ void CWeaponBox::Collect( CBaseEntity *other, COLLECT_TYPE collectType )
 	if ( !collected )
 		return;
 
-	EMIT_SOUND( edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
+	EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 	Collected( other, collectType );
 
 	if ( !( pev->spawnflags & ( SF_NORESPAWN | SF_CREATEDWEAPON ) ) )
@@ -1933,7 +1956,7 @@ void CWeaponBox::Kill( void )
 	}
 
 	SetThink( &CWeaponBox::SUB_Remove );
-	pev->nextthink = gpGlobals->time + 0.1f;
+	pev->nextthink = gpGlobals->time + 0.1;
 }
 
 bool CWeaponBox::CriticalRemove( void )
@@ -1950,7 +1973,7 @@ bool CWeaponBox::PackWeapon( CBasePlayerItem *pWeapon )
 		return FALSE;
 
 	pWeapon->Unhook();
-	pWeapon->pev->owner = edict();
+	pWeapon->pev->owner = ENT( pev );
 
 	int iWeaponSlot = pWeapon->iItemSlot();
 
@@ -2044,6 +2067,16 @@ bool CWeaponBox::IsEmpty( void )
 	}
 
 	return TRUE;
+}
+
+CWeaponBox *CWeaponBox::CreateWeaponBox( const Vector &origin, const Vector &angles, const Vector &direction, edict_t *owner )
+{
+	CWeaponBox *box = static_cast<CWeaponBox *>( CBaseEntity::Create( "weaponbox", origin + direction * 10, angles, false, owner ) );
+	box->pev->angles.x = 0;
+	box->pev->angles.z = 0;
+	box->pev->velocity = direction * 300 + direction * 100;
+	box->pev->spawnflags |= SF_NORESPAWN;
+	return box;
 }
 
 void CWeaponBox::SetObjectCollisionBox( void )

@@ -24,12 +24,12 @@ void CTriggerTrackGoal::KeyValue( KeyValueData *pkvd )
 {
 	if ( FStrEq( pkvd->szKeyName, "path_name" ) )
 	{
-		m_iszPathName = ALLOC_STRING( pkvd->szValue );
+		m_iszPathName = AllocStringLocal( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else if ( FStrEq( pkvd->szKeyName, "m_iszSoundNoPath" ) )
 	{
-		m_iszSoundNoPath = ALLOC_STRING( pkvd->szValue );
+		m_iszSoundNoPath = AllocStringLocal( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else

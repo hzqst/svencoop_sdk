@@ -298,6 +298,20 @@ BOOL CBaseMonster :: FValidateHintType ( short sHint )
 	return FALSE;
 }
 
+static CBaseEntity *GetSightEntity( EHANDLE &link )
+{
+	CEntityHandle<CBaseEntity> entity = { link };
+	return entity;
+}
+
+static void LinkSightEntity( EHANDLE &head, EHANDLE &next, CBaseEntity *entity )
+{
+	next = head;
+	CEntityHandle<CBaseEntity> handle;
+	handle = entity;
+	head = handle.m_Handle;
+}
+
 //=========================================================
 // Look - Base class monster function to find enemies or
 // food by sight. iDistance is distance ( in units ) that the
@@ -331,83 +345,77 @@ void CBaseMonster :: Look ( int iDistance )
 
 	CBaseEntity *pList[LOOK_MAX_ENTITIES];
 
-		Vector delta = Vector( iDistance, iDistance, iDistance );
+	Vector delta = Vector( iDistance, iDistance, iDistance );
+	int count = UTIL_TargetsInBox( pList, LOOK_MAX_ENTITIES, pev->origin - delta, pev->origin + delta );
 
-		// Find only monsters/clients in box, NOT limited to PVS
-		int count = UTIL_EntitiesInBox( pList, LOOK_MAX_ENTITIES, pev->origin - delta, pev->origin + delta, FL_CLIENT|FL_MONSTER );
-		for ( int i = 0; i < count; i++ )
-		{
+	for ( int i = 0; i < count; i++ )
+	{
 		CBaseEntity *pSightEnt = pList[i];
-			// !!!temporarily only considering other monsters and clients, don't see prisoners
-			if ( pSightEnt == this || FBitSet( pSightEnt->pev->spawnflags, SF_MONSTER_PRISONER ) )
+		if ( pSightEnt == this || FBitSet( pSightEnt->pev->spawnflags, SF_MONSTER_PRISONER ) )
 			continue;
 
 		if ( !FInViewCone( pSightEnt ) || !FVisible( pSightEnt ) )
 			continue;
 
+		bool alive = pSightEnt->pev->health > 0;
 		bool fLink = true;
 
-		if ( !( pSightEnt->pev->health > 0 ) )
+		if ( !alive )
 		{
 			// a corpse only counts while it is the enemy or a remembered one
 			fLink = pSightEnt == m_hEnemy;
 
 			for ( int j = 0; j < MAX_OLD_ENEMIES && !fLink; j++ )
-				fLink = pSightEnt == m_hOldEnemy[j];
+				fLink = pSightEnt == GetSightEntity( m_hOldEnemy[j] );
 		}
-		else
+		else if ( pSightEnt->IsPlayer() )
 		{
-					if ( pSightEnt->IsPlayer() )
-					{
-						if ( pev->spawnflags & SF_MONSTER_WAIT_TILL_SEEN )
-						{
-							CBaseMonster *pClient = pSightEnt->MyMonsterPointer();
-							// don't link this client in the list if the monster is wait till seen and the player isn't facing the monster
-							if ( !pClient->FInViewCone( this ) )
-						continue;
-
-					// player sees us, become normal now.
-					pev->spawnflags &= ~SF_MONSTER_WAIT_TILL_SEEN;
-							}
-
-				// if we see a client, remember that (mostly for scripted AI)
-				iSighted |= bits_COND_SEE_CLIENT;
-					}
-
-			// we know this ent is visible, so if it also happens to be our enemy, store that now.
-			if ( pSightEnt == m_hEnemy )
+			if ( pev->spawnflags & SF_MONSTER_WAIT_TILL_SEEN )
 			{
-				iSighted |= bits_COND_SEE_ENEMY;
-				m_flEnemySeenTime = gpGlobals->time + ENEMY_SEEN_MEMORY_TIME;
+				CBaseMonster *pClient = pSightEnt->MyMonsterPointer();
+				// don't link this client in the list if the monster is wait till seen and the player isn't facing the monster
+				if ( !pClient->FInViewCone( this ) )
+					continue;
+
+				// player sees us, become normal now.
+				pev->spawnflags &= ~SF_MONSTER_WAIT_TILL_SEEN;
 			}
+
+			// if we see a client, remember that (mostly for scripted AI)
+			iSighted |= bits_COND_SEE_CLIENT;
 		}
 
 		if ( fLink )
 		{
-			pSightEnt->m_pLink = m_pLink;
-					m_pLink = pSightEnt;
+			LinkSightEntity( m_pLink, pSightEnt->m_pLink, pSightEnt );
+
+			// we know this ent is visible, so if it also happens to be our enemy, store that now.
+			if ( alive && pSightEnt == m_hEnemy )
+			{
+				iSighted |= bits_COND_SEE_ENEMY;
+				m_flEnemySeenTime = gpGlobals->time + ENEMY_SEEN_MEMORY_TIME;
+			}
 
 			switch ( IRelationship ( pSightEnt ) )
-					{
-					case	R_NM:
-						iSighted |= bits_COND_SEE_NEMESIS;
-						break;
-					case	R_HT:
-						iSighted |= bits_COND_SEE_HATE;
-						break;
-					case	R_DL:
-						iSighted |= bits_COND_SEE_DISLIKE;
-						break;
-					case	R_FR:
-						iSighted |= bits_COND_SEE_FEAR;
-						break;
+			{
+			case	R_NM:
+				iSighted |= bits_COND_SEE_NEMESIS;
+				break;
+			case	R_HT:
+				iSighted |= bits_COND_SEE_HATE;
+				break;
+			case	R_DL:
+				iSighted |= bits_COND_SEE_DISLIKE;
+				break;
+			case	R_FR:
+				iSighted |= bits_COND_SEE_FEAR;
+				break;
 			default:
 				break;
-					}
-				}
+			}
+		}
 
-		pSightEnt->m_pSightLink = m_pSightLink;
-		m_pSightLink = pSightEnt;
+		LinkSightEntity( m_pSightLink, pSightEnt->m_pSightLink, pSightEnt );
 	}
 
 	SetConditions( iSighted );
@@ -3005,7 +3013,6 @@ void CBaseMonster :: MonsterInitThink ( void )
 
 void CBaseMonster::OnCreate( void )
 {
-	m_pScheduleSaved = NULL;
 	m_pInventory = NULL;
 	ResetEffects();
 	CBaseToggle::OnCreate();
@@ -3581,9 +3588,8 @@ bool IsFriendlyFireCandidate( CBaseMonster *pShooter, CBaseEntity *pMember )
 	if ( pMonster && pMonster->IRelationship( pShooter ) > R_NO )
 		return false;
 
-	int memberClass = pMember->Classify();
-
-	return memberClass != CLASS_NONE && memberClass != CLASS_PLAYER_BIOWEAPON && memberClass != CLASS_ALIEN_BIOWEAPON;
+	return pMember->Classify() != CLASS_NONE && pMember->Classify() != CLASS_PLAYER_BIOWEAPON
+	    && pMember->Classify() != CLASS_ALIEN_BIOWEAPON;
 }
 
 //=========================================================
@@ -3858,6 +3864,38 @@ void CBaseMonster::SetGaitActivity( Activity NewActivity )
 	SetYawSpeed();
 }
 
+static bool NoFriendlyFireInLane( CBaseMonster *pShooter, const Vector &vecPos )
+{
+	CBaseEntity *pList[FRIENDLY_FIRE_MAX_MONSTERS];
+	int count = pShooter->FindMonstersInWorld( pList, FRIENDLY_FIRE_MAX_MONSTERS, FL_MONSTER );
+
+	for ( int i = 0; i < count; i++ )
+	{
+		if ( !IsFriendlyFireCandidate( pShooter, pList[i] ) )
+			continue;
+
+		if ( pShooter->FInBulletCone( pList[i], vecPos ) && pShooter->FVisibleGunPos( pList[i], vecPos ) )
+			return false;
+	}
+
+	return true;
+}
+
+bool CBaseMonster::NoFriendlyFire( Vector vecPos )
+{
+	if ( !( m_afCapability & bits_CAP_SQUAD ) )
+		return true;
+
+	CBaseEntity *pEnemy = m_hEnemy;
+	if ( pEnemy )
+	{
+		Vector center = pEnemy->Center();
+		UTIL_MakeVectors( UTIL_VecToAngles( center - pev->origin ) );
+	}
+
+	return NoFriendlyFireInLane( this, vecPos );
+}
+
 bool CBaseMonster::NoFriendlyFire( Vector vecPos, CBaseEntity *pTarget )
 {
 	if ( !( m_afCapability & bits_CAP_SQUAD ) )
@@ -3867,20 +3905,7 @@ bool CBaseMonster::NoFriendlyFire( Vector vecPos, CBaseEntity *pTarget )
 		return false;
 
 	UTIL_MakeVectors( UTIL_VecToAngles( pTarget->Center() - vecPos ) );
-
-	CBaseEntity *pList[FRIENDLY_FIRE_MAX_MONSTERS];
-	int count = FindMonstersInWorld( pList, FRIENDLY_FIRE_MAX_MONSTERS, FL_MONSTER );
-
-	for ( int i = 0; i < count; i++ )
-	{
-		if ( !IsFriendlyFireCandidate( this, pList[i] ) )
-			continue;
-
-		if ( FInBulletCone( pList[i], vecPos ) && FVisibleGunPos( pList[i], vecPos ) )
-			return false;
-	}
-
-	return true;
+	return NoFriendlyFireInLane( this, vecPos );
 }
 
 bool CBaseMonster::NoFriendlyFireToPos( Vector vecPos )
@@ -3894,10 +3919,13 @@ bool CBaseMonster::NoFriendlyFireToPos( Vector vecPos )
 
 	UTIL_MakeVectors( UTIL_VecToAngles( vecPos - Center() ) );
 
-	Vector vecSide = gpGlobals->v_right * ( pev->size.x * FRIENDLY_FIRE_SIDE_SCALE );
+	Vector vecLeft = Center();
+	vecLeft = vecLeft - gpGlobals->v_right * ( pev->size.x * FRIENDLY_FIRE_SIDE_SCALE );
+	Vector vecRight = Center();
+	vecRight = vecRight + gpGlobals->v_right * ( pev->size.x * FRIENDLY_FIRE_SIDE_SCALE );
 
-	leftPlane.InitializePlane( gpGlobals->v_right, Center() - vecSide );
-	rightPlane.InitializePlane( -gpGlobals->v_right, Center() + vecSide );
+	leftPlane.InitializePlane( gpGlobals->v_right, vecLeft );
+	rightPlane.InitializePlane( -gpGlobals->v_right, vecRight );
 	backPlane.InitializePlane( gpGlobals->v_forward, Center() );
 
 	CBaseEntity *pList[FRIENDLY_FIRE_MAX_MONSTERS];
@@ -3923,8 +3951,10 @@ bool CBaseMonster::NoFriendlyFireToPos( Vector vecPos )
 
 		if ( m_hEnemy != NULL )
 		{
-			flEnemyDist = ( m_hEnemy->Center() - Center() ).Length2D();
-			flEnemyToMember = ( m_hEnemy->Center() - pMember->pev->origin ).Length2D();
+			Vector vecEnemy = m_hEnemy->Center();
+			flEnemyDist = ( vecEnemy - Center() ).Length2D();
+			vecEnemy = m_hEnemy->Center();
+			flEnemyToMember = ( vecEnemy - pMember->pev->origin ).Length2D();
 		}
 
 		if ( !FVisibleGunPos( pMember, Center() ) )
@@ -4259,8 +4289,6 @@ BOOL CBaseMonster :: BuildNearestRoute ( Vector vecThreat, Vector vecViewOffset,
 // a pointer to the enemy entity in that list that is nearest the 
 // caller.
 //
-// !!!UNDONE - currently, this only returns the closest enemy.
-// we'll want to consider distance, relationship, attack types, back turned, etc.
 //=========================================================
 CBaseEntity *CBaseMonster :: BestVisibleEnemy ( void )
 {
@@ -4270,32 +4298,28 @@ CBaseEntity *CBaseMonster :: BestVisibleEnemy ( void )
 	int			iDist;
 	int			iBestRelationship;
 
-	iNearest = 8192;// so first visible entity will become the closest.
-	pNextEnt = m_pLink;
+	iNearest = 65536;
+	pNextEnt = GetSightEntity( m_pLink );
 	pReturn = NULL;
 	iBestRelationship = R_NO;
 
 	while ( pNextEnt != NULL )
 	{
-		if ( pNextEnt->IsAlive() )
+		if ( ( pNextEnt->IsAlive() || pNextEnt->IsBSPModel() ) && !( pNextEnt->pev->flags & FL_NOTARGET ) )
 		{
-			if ( IRelationship( pNextEnt) > iBestRelationship )
+			if ( IRelationship( pNextEnt ) > iBestRelationship || IRelationship( pNextEnt ) == R_FR )
 			{
-				// this entity is disliked MORE than the entity that we 
-				// currently think is the best visible enemy. No need to do 
-				// a distance check, just get mad at this one for now.
 				iBestRelationship = IRelationship ( pNextEnt );
-				iNearest = ( pNextEnt->pev->origin - pev->origin ).Length();
+				Vector center = pNextEnt->Center();
+				iNearest = ( center - Center() ).Length();
 				pReturn = pNextEnt;
 			}
-			else if ( IRelationship( pNextEnt) == iBestRelationship )
+			else if ( IRelationship( pNextEnt ) == iBestRelationship && IRelationship( pNextEnt ) > R_NO )
 			{
-				// this entity is disliked just as much as the entity that
-				// we currently think is the best visible enemy, so we only
-				// get mad at it if it is closer.
-				iDist = ( pNextEnt->pev->origin - pev->origin ).Length();
-				
-				if ( iDist <= iNearest )
+				Vector center = pNextEnt->Center();
+				iDist = ( center - Center() ).Length();
+
+				if ( iDist < iNearest || ( !NoFriendlyFire( pReturn->Center() ) && NoFriendlyFire( pNextEnt->Center() ) ) )
 				{
 					iNearest = iDist;
 					iBestRelationship = IRelationship ( pNextEnt );
@@ -4304,7 +4328,7 @@ CBaseEntity *CBaseMonster :: BestVisibleEnemy ( void )
 			}
 		}
 
-		pNextEnt = pNextEnt->m_pLink;
+		pNextEnt = GetSightEntity( pNextEnt->m_pLink );
 	}
 
 	return pReturn;
@@ -4949,7 +4973,7 @@ BOOL CBaseMonster :: FCheckAITrigger ( void )
 		}
 		break;
 	case AITRIGGER_HALFHEALTH:
-		if ( IsAlive() && pev->health <= ( pev->max_health / 2 ) )
+		if ( ( IsAlive() && pev->health <= ( pev->max_health / 2 ) ) || pev->deadflag != DEAD_NO )
 		{
 			fFireTarget = TRUE;
 		}
@@ -5437,7 +5461,8 @@ Vector CBaseMonster :: ShootAtEnemy( const Vector &shootOrigin )
 		if ( pEnemy->IsBSPModel() )
 			return ( m_vecEnemyLKP - shootOrigin ).Normalize();
 
-		return ( (pEnemy->BodyTarget( shootOrigin ) - pEnemy->pev->origin) + m_vecEnemyLKP - shootOrigin ).Normalize();
+		Vector vecTarget = m_hEnemy->BodyTarget( shootOrigin );
+		return ( ( vecTarget - m_hEnemy->pev->origin ) + m_vecEnemyLKP - shootOrigin ).Normalize();
 	}
 	else
 		return gpGlobals->v_forward;
@@ -5481,13 +5506,14 @@ void CBaseMonster::PlaySentence( const char *pszSentence, float duration, float 
 	if ( !pszSentence )
 		return;
 
+	edict_t *pEdict = edict();
 	// '!' names a sentence, '+' a plain sound file
 	if ( pszSentence[0] == '!' )
-		EMIT_SOUND_DYN( edict(), CHAN_VOICE, pszSentence, volume, attenuation, 0, PITCH_NORM );
+		EMIT_SOUND_DYN( pEdict, CHAN_VOICE, pszSentence, volume, attenuation, 0, PITCH_NORM );
 	else if ( pszSentence[0] == '+' )
-		EMIT_SOUND_DYN( edict(), CHAN_VOICE, pszSentence + 1, volume, attenuation, 0, PITCH_NORM );
+		EMIT_SOUND_DYN( pEdict, CHAN_VOICE, pszSentence + 1, volume, attenuation, 0, PITCH_NORM );
 	else
-		SENTENCEG_PlayRndSz( edict(), pszSentence, volume, attenuation, 0, PITCH_NORM );
+		SENTENCEG_PlayRndSz( pEdict, pszSentence, volume, attenuation, 0, PITCH_NORM );
 }
 
 
@@ -5555,6 +5581,7 @@ void CBaseMonster :: MonsterInitDead( void )
 BOOL CBaseMonster :: BBoxFlat ( void )
 {
 	TraceResult	tr;
+	tr.vecEndPos = tr.vecPlaneNormal = g_vecZero;
 	Vector		vecPoint;
 	float		flXSize, flYSize;
 	float		flLength;

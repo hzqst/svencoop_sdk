@@ -29,6 +29,7 @@
 #include "server_support.h"
 #include "ServerDLL.h"
 #include "CServer.h"
+#include "CNetworkProfiler.h"
 #include "CCommand.h"
 #include "CConCommandSystem.h"
 #include "client_commands.h"
@@ -718,6 +719,7 @@ void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
 
 	// Every call to ServerActivate should be matched by a call to ServerDeactivate
 	g_bMapStartCalled = false;
+	CNetworkProfiler::GetInstance()->Reset();
 	g_bServerActive = true;
 
 	UTIL_CopyString( g_szChangeLevelName, "", sizeof( g_szChangeLevelName ) );

@@ -24,10 +24,8 @@ void CPlayerAmmo::Spawn( void )
 {
 	Precache();
 
-	if ( SetupModel() )
-		UTIL_SetModel( this, STRING( pev->model ) );
-	else
-		UTIL_SetModel( this, GetDefaultModel() );
+	const char *model = SetupModel() ? STRING( pev->model ) : GetDefaultModel();
+	SetModel_Intercept( ENT( pev ), model );
 
 	CBasePlayerAmmo::Spawn();
 }
@@ -44,7 +42,8 @@ BOOL CPlayerAmmo::AddAmmo( CBaseEntity *other )
 	if ( other->GiveAmmo( m_iAmmoGive, m_pszAmmoName, m_iMaxCarry, false, NULL ) == -1 )
 		return FALSE;
 
-	EMIT_SOUND_DYN( edict(), CHAN_ITEM, GetPickupSound(), 1.0, ATTN_NORM, 0, PITCH_NORM,
+	const char *sample = GetPickupSound();
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, sample, 1.0, ATTN_NORM, 0, PITCH_NORM,
 		0, false, g_vecZero );
 	return TRUE;
 }

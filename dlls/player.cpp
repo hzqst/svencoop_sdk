@@ -55,6 +55,7 @@
 #include "observer.h"
 #include "CSpawnPoints.h"
 #include "CSurvivalMode.h"
+#include "DamageInfo.h"
 #include "CCVarSystem.h"
 #include "CASHook.h"
 #include "effects.h"
@@ -311,6 +312,12 @@ Vector CBasePlayer :: GetGunPosition( )
 	return origin;
 }
 
+extern cvar_t sk_player_arm;
+extern cvar_t sk_player_chest;
+extern cvar_t sk_player_head;
+extern cvar_t sk_player_leg;
+extern cvar_t sk_player_stomach;
+
 //=========================================================
 // TraceAttack
 //=========================================================
@@ -325,27 +332,37 @@ void CBasePlayer :: TraceAttack( entvars_t *pevAttacker, float flDamage, Vector 
 		case HITGROUP_GENERIC:
 			break;
 		case HITGROUP_HEAD:
-			flDamage *= gSkillData.plrHead;
+			flDamage *= sk_player_head.value;
 			break;
 		case HITGROUP_CHEST:
-			flDamage *= gSkillData.plrChest;
+			flDamage *= sk_player_chest.value;
 			break;
 		case HITGROUP_STOMACH:
-			flDamage *= gSkillData.plrStomach;
+			flDamage *= sk_player_stomach.value;
 			break;
 		case HITGROUP_LEFTARM:
 		case HITGROUP_RIGHTARM:
-			flDamage *= gSkillData.plrArm;
+			flDamage *= sk_player_arm.value;
 			break;
 		case HITGROUP_LEFTLEG:
 		case HITGROUP_RIGHTLEG:
-			flDamage *= gSkillData.plrLeg;
+			flDamage *= sk_player_leg.value;
 			break;
 		default:
 			break;
 		}
 
-		SpawnBlood(ptr->vecEndPos, BloodColor(), flDamage);// a little surface blood.
+		if ( bitsDamageType == DMG_SNIPER )
+			UTIL_BloodStream( ptr->vecEndPos, ptr->vecPlaneNormal, 72, flDamage * 3 );
+
+		if ( BloodColor() != DONT_BLEED && ( bitsDamageType == DMG_BULLET || bitsDamageType == DMG_SNIPER ) )
+		{
+			RANDOM_LONG( 0, 1 );
+			EMIT_SOUND_DYN( ENT( pev ), CHAN_BODY, "weapons/bullet_hit1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM, 0, false, g_vecZero );
+		}
+
+		int bloodColor = BloodColor();
+		SpawnBlood(ptr->vecEndPos, bloodColor, flDamage);// a little surface blood.
 		TraceBleed( flDamage, vecDir, ptr, bitsDamageType );
 		AddMultiDamage( pevAttacker, this, flDamage, bitsDamageType );
 	}
@@ -358,11 +375,36 @@ void CBasePlayer :: TraceAttack( entvars_t *pevAttacker, float flDamage, Vector 
 	etc are implemented with subsequent calls to TakeDamage using DMG_GENERIC.
 */
 
-#define ARMOR_RATIO	 0.2	// Armor Takes 80% of the damage
-#define ARMOR_BONUS  0.5	// Each Point of Armor is work 1/x points of health
+#define ARMOR_RATIO	 0.05f	// Armor Takes 95% of the damage
+#define ARMOR_BONUS  0.2f	// Each Point of Armor is worth 1/x points of health
+
+static CBaseEntity *GetPlayerHookEntity( entvars_t *vars, bool worldFallback )
+{
+	edict_t *entity = vars ? vars->pContainingEntity : NULL;
+
+	if ( !entity && worldFallback )
+		entity = ENT( 0 );
+
+	return entity && !entity->free ? (CBaseEntity *) entity->pvPrivateData : NULL;
+}
 
 int CBasePlayer :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
 {
+	if ( !pev->takedamage )
+		return 0;
+
+	CBaseEntity *pInflictor = GetPlayerHookEntity( pevInflictor, true );
+	CBaseEntity *pAttacker = GetPlayerHookEntity( pevAttacker, true );
+	DamageInfo info;
+
+	SetDamageInfo( &info, this, pInflictor, pAttacker, flDamage, bitsDamageType );
+	g_PlayerTakeDamageHook.Call( 0, &info );
+	GetDamageInfo( &info, NULL, &pInflictor, &pAttacker, &flDamage, &bitsDamageType );
+
+	pevInflictor = pInflictor ? pInflictor->pev : NULL;
+	pevAttacker = pAttacker ? pAttacker->pev : NULL;
+	m_bitsLastDamageType = bitsDamageType;
+
 	// have suit diagnose the problem - ie: report damage type
 	int bitsDamage = bitsDamageType;
 	int ffound = TRUE;
@@ -383,25 +425,36 @@ int CBasePlayer :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, 
 		flBonus *= 2;
 	}
 
+	if ( pev->waterlevel > 0 )
+	{
+		if ( bitsDamageType & DMG_ACID )
+			flBonus *= pev->waterlevel;
+		else if ( bitsDamageType & DMG_BURN )
+			flBonus *= 2 * pev->waterlevel;
+	}
+
 	// Already dead
-	if ( !IsAlive() )
+	if ( !IsAlive() || IsObserver() )
 		return 0;
 	// go take the damage first
 
 	
-	CBaseEntity *pAttacker = CBaseEntity::Instance(pevAttacker);
-
 	if ( !g_pGameRules->FPlayerCanTakeDamage( this, pAttacker ) )
 	{
 		// Refuse the damage
 		return 0;
 	}
 
+	if ( pAttacker && pAttacker->IsMonster() )
+		flDamage *= pAttacker->MyMonsterPointer()->m_flEffectDamage;
+
+	GetDamagePoints( pevAttacker, pevInflictor, flDamage );
+
 	// keep track of amount of damage last sustained
 	m_lastDamageAmount = flDamage;
 
 	// Armor. 
-	if (pev->armorvalue && !(bitsDamageType & (DMG_FALL | DMG_DROWN)) )// armor doesn't protect against fall or drown damage!
+	if (pev->armorvalue && !(bitsDamageType & (DMG_FALL | DMG_DROWN | DMG_SNIPER)) )// armor doesn't protect against fall, drown or sniper damage!
 	{
 		float flNew = flDamage * flRatio;
 
@@ -543,7 +596,8 @@ int CBasePlayer :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, 
 		}
 	}
 
-	pev->punchangle.x = -2;
+	if (!(bitsDamage & DMG_FALL))
+		pev->punchangle.x = -2;
 
 	if (fTookDamage && !ftrivial && fmajor && flHealthPrev >= 75) 
 	{
@@ -728,6 +782,9 @@ entvars_t *g_pevLastInflictor;  // Set in combat.cpp.  Used to pass the damage i
 
 void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 {
+	g_PlayerKilledHook.Call( 0, this, GetPlayerHookEntity( pevAttacker, false ), iGib );
+	CSurvivalMode::GetInstance()->PlayerKilled();
+
 	CSound *pSound;
 
 	STOP_SOUND( edict(), CHAN_STATIC, "weapons/egon_run3.wav" );
@@ -1252,12 +1309,10 @@ WaterMove
 
 void CBasePlayer::WaterMove()
 {
-	int air;
-
 	if (pev->movetype == MOVETYPE_NOCLIP)
 		return;
 
-	if (pev->health < 0)
+	if (pev->health <= 0)
 		return;
 
 	// waterlevel 0 - not in water
@@ -1275,7 +1330,7 @@ void CBasePlayer::WaterMove()
 		else if (pev->air_finished < gpGlobals->time + 9)
 			EMIT_SOUND(ENT(pev), CHAN_VOICE, "player/pl_wade2.wav", 1, ATTN_NORM);
 
-		pev->air_finished = gpGlobals->time + AIRTIME;
+		pev->air_finished = ( m_flEffectRespiration + AIRTIME ) + gpGlobals->time;
 		pev->dmg = 2;
 
 		// if we took drowning damage, give it back slowly
@@ -1334,34 +1389,38 @@ void CBasePlayer::WaterMove()
 	
 	// make bubbles
 
-	air = (int)(pev->air_finished - gpGlobals->time);
-	if (!RANDOM_LONG(0,0x1f) && RANDOM_LONG(0,AIRTIME-1) >= air)
+	if (pev->waterlevel == 3)
 	{
-		switch (RANDOM_LONG(0,3))
+		int air = (int)(pev->air_finished - gpGlobals->time);
+		if (!RANDOM_LONG(0,0x1f) && RANDOM_LONG(0,(int)(m_flEffectRespiration + AIRTIME - 1)) >= air)
+		{
+			switch (RANDOM_LONG(0,3))
 			{
 			case 0:	EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_swim1.wav", 0.8, ATTN_NORM); break;
 			case 1:	EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_swim2.wav", 0.8, ATTN_NORM); break;
 			case 2:	EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_swim3.wav", 0.8, ATTN_NORM); break;
 			case 3:	EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_swim4.wav", 0.8, ATTN_NORM); break;
+			}
 		}
 	}
 
-	if (pev->watertype == CONTENT_LAVA)		// do damage
-	{
-		if (pev->dmgtime < gpGlobals->time)
-			TakeDamage(VARS(eoNullEntity), VARS(eoNullEntity), 10 * pev->waterlevel, DMG_BURN);
-	}
-	else if (pev->watertype == CONTENT_SLIME)		// do damage
-	{
-		pev->dmgtime = gpGlobals->time + 1;
-		TakeDamage(VARS(eoNullEntity), VARS(eoNullEntity), 4 * pev->waterlevel, DMG_ACID);
-	}
-	
 	if (!FBitSet(pev->flags, FL_INWATER))
 	{
 		SetBits(pev->flags, FL_INWATER);
 		pev->dmgtime = 0;
 	}
+
+	if (pev->dmgtime < gpGlobals->time)
+	{
+		if (pev->watertype == CONTENT_LAVA)		// do damage
+			TakeDamage(VARS(eoNullEntity), VARS(eoNullEntity), 20 * pev->waterlevel, DMG_BURN);
+		else if (pev->watertype == CONTENT_SLIME)	// do damage
+			TakeDamage(VARS(eoNullEntity), VARS(eoNullEntity), 8 * pev->waterlevel, DMG_ACID);
+		pev->dmgtime = gpGlobals->time + 0.4;
+	}
+
+	if (!FBitSet(pev->flags, FL_WATERJUMP))
+		pev->velocity = pev->velocity - pev->velocity * (pev->waterlevel * 0.8 * gpGlobals->frametime);
 }
 
 
@@ -2263,14 +2322,19 @@ void CBasePlayer::CheckTimeBasedDamage()
 
 	static float gtbdPrev = 0.0;
 
-	if (!(m_bitsDamageType & DMG_TIMEBASED))
-		return;
-
 	// only check for time based damage approx. every 2 seconds
 	if ( fabs(gpGlobals->time - m_tbdPrev) < 2.0)
 		return;
 	
 	m_tbdPrev = gpGlobals->time;
+
+	if (pev->health > pev->max_health)
+		pev->health -= 1;
+	if (pev->armorvalue > pev->armortype)
+		pev->armorvalue -= 1;
+
+	if (!(m_bitsDamageType & DMG_TIMEBASED))
+		return;
 
 	for (i = 0; i < CDMG_TIMEBASED; i++)
 	{
@@ -2288,7 +2352,7 @@ void CBasePlayer::CheckTimeBasedDamage()
 				bDuration = NERVEGAS_DURATION;
 				break;
 			case itbd_Poison:
-				TakeDamage(pev, pev, POISON_DAMAGE, DMG_GENERIC);
+				TakeDamage(pev, CWorld::GetInstance()->pev, POISON_DAMAGE, DMG_GENERIC);
 				bDuration = POISON_DURATION;
 				break;
 			case itbd_Radiation:
@@ -3208,6 +3272,7 @@ void CBasePlayer::Spawn( void )
 	pev->gravity		= 1.0;
 	m_bitsHUDDamage		= -1;
 	m_bitsDamageType	= 0;
+	m_bitsLastDamageType = 0;
 	m_afPhysicsFlags	= 0;
 
 	m_iKeyValueCheats	= 0;
@@ -3497,8 +3562,8 @@ void CBasePlayer::SelectNextItem( int iItem )
 			pLast = pLast->m_pNext;
 
 		// relink chain
-		pLast->m_pNext = m_pActiveItem;
-		m_pActiveItem->m_pNext = NULL;
+		pLast->m_pNext = pItem;
+		pItem->m_pNext = NULL;
 		m_rgpPlayerItems[ iItem ] = pItem;
 	}
 
@@ -3512,11 +3577,8 @@ void CBasePlayer::SelectNextItem( int iItem )
 	
 	m_pActiveItem = pItem;
 
-	if (m_pActiveItem)
-	{
-		m_pActiveItem->Deploy( );
-		m_pActiveItem->UpdateItemInfo( );
-	}
+	DeployWeapon();
+	pItem->UpdateItemInfo( );
 }
 
 void CBasePlayer::SelectItem(const char *pstr)
@@ -3798,17 +3860,8 @@ void CBasePlayer::GiveNamedItem( const char *pszName, int iFlags, int iAmmoCount
 
 bool CBasePlayer::IsExclusiveHoldItemActive( void )
 {
-	if ( !m_pActiveItem || m_pActiveItem->edict()->free )
-		return false;
-
-	EHANDLE activeItem;
-
-	activeItem = m_pActiveItem;
-
-	if ( (CBaseEntity *) activeItem != m_pActiveItem )
-		return false;
-
-	return m_pActiveItem->m_bExclusiveHold;
+	CBasePlayerItem *activeItem = m_pActiveItem;
+	return activeItem && activeItem->m_bExclusiveHold;
 }
 
 
@@ -3945,7 +3998,7 @@ void CBasePlayer::ImpulseCommands( )
 
 	case	201:// paint decal
 		
-		if ( gpGlobals->time < m_flNextDecalTime )
+		if ( CVAR_GET_FLOAT( "decalfrequency" ) <= -1.0f || gpGlobals->time < m_flNextDecalTime )
 		{
 			// too early!
 			break;
@@ -3954,11 +4007,23 @@ void CBasePlayer::ImpulseCommands( )
 		UTIL_MakeVectors(pev->v_angle);
 		UTIL_TraceLine ( pev->origin + pev->view_ofs, pev->origin + pev->view_ofs + gpGlobals->v_forward * 128, ignore_monsters, ENT(pev), & tr);
 
-		if ( tr.flFraction != 1.0 )
+		if ( tr.flFraction < 1.0 )
 		{// line hit something, so paint a decal
-			m_flNextDecalTime = gpGlobals->time + decalfrequency.value;
+			bool canSpray = true;
+
+			g_PlayerPreDecalHook.Call( 0, this, &tr, &canSpray );
+
+			if ( !canSpray )
+			{
+				m_flNextDecalTime = gpGlobals->time + 0.1f;
+				break;
+			}
+
+			g_PlayerDecalHook.Call( 0, this, &tr );
+
 			CSprayCan *pCan = GetClassPtr((CSprayCan *)NULL);
 			pCan->Spawn( pev );
+			m_flNextDecalTime = gpGlobals->time + CVAR_GET_FLOAT( "decalfrequency" );
 		}
 
 		break;
@@ -4235,7 +4300,8 @@ bool CBasePlayer::RemovePlayerItem( CBasePlayerItem *pItem )
 
 	if (pPrev == pItem)
 	{
-		m_rgpPlayerItems[pItem->iItemSlot()] = pItem->m_pNext;
+		CEntityHandle<CBasePlayerItem> next = pItem->m_pNext;
+		m_rgpPlayerItems[pItem->iItemSlot()] = next;
 		return TRUE;
 	}
 	else
@@ -4259,12 +4325,7 @@ bool CBasePlayer::RemovePlayerItem( CBasePlayerItem *pItem )
 //
 void CBasePlayer :: DeployWeapon( void )
 {
-	if ( m_fWeaponsBlocked || !m_pActiveItem || !m_pActiveItem->pev )
-		return;
-
-	edict_t *weaponEdict = m_pActiveItem->edict();
-
-	if ( weaponEdict && !weaponEdict->free && weaponEdict->pvPrivateData == m_pActiveItem )
+	if ( !m_fWeaponsBlocked && m_pActiveItem )
 		m_pActiveItem->Deploy();
 }
 
@@ -4608,7 +4669,7 @@ bool CBasePlayer::DropPlayerWeapon( void )
 	if ( m_pActiveItem && g_pGameRules->DeadPlayerWeapons( this ) == GR_PLR_DROP_GUN_ACTIVE )
 		pack = ( m_pActiveItem->iFlags() & ITEM_FLAG_ESSENTIAL ) == 0;
 
-	if ( ( ( m_bitsDamageType & ( DMG_CRUSH | DMG_FALL | DMG_BLAST | DMG_CLUB | DMG_SHOCK | DMG_SONIC ) ) && ( pev->effects & EF_NODRAW ) ) || pack )
+	if ( ( ( m_bitsLastDamageType & ( DMG_CRUSH | DMG_FALL | DMG_BLAST | DMG_CLUB | DMG_SHOCK | DMG_SONIC ) ) && ( pev->effects & EF_NODRAW ) ) || pack )
 	{
 		PackDeadPlayerItems();
 		return true;
@@ -4985,7 +5046,7 @@ bool CBasePlayer::CanDropPlayerItem( const char *pszItemName )
 	if ( pszItemName && !stricmp( pszItemName, "weapon_shockrifle" ) )
 		return true;
 
-	int iDropWeapons = (int) CVAR_GET_FLOAT( "mp_dropweapons" );
+	int iDropWeapons = (int) CVAR_GET_POINTER( "mp_dropweapons" )->value;
 
 	if ( iDropWeapons < 0 )
 		return false;
@@ -5024,7 +5085,7 @@ CBaseEntity *CBasePlayer::CreatePlayerItem( const char *pszItemName )
 
 void CBasePlayer::SendCurrentWeapon( int iState, int iId, int iClip, int iClip2 )
 {
-	MESSAGE_BEGIN( MSG_ONE, gmsgCurWeapon, NULL, pev );
+	MESSAGE_BEGIN( MSG_ONE, gmsgCurWeapon, NULL, ENT( pev ) );
 		WRITE_BYTE( iState );
 		WRITE_SHORT( iId );
 		WRITE_LONG( iClip );
@@ -5241,7 +5302,7 @@ int CBasePlayer :: GiveAmmo( int iCount, const char *szName, int iMax, bool fFro
 	if ( gmsgAmmoPickup )  // make sure the ammo messages have been linked first
 	{
 		// Send the message that ammo has been picked up
-		MESSAGE_BEGIN( MSG_ONE, gmsgAmmoPickup, NULL, pev );
+		MESSAGE_BEGIN( MSG_ONE, gmsgAmmoPickup, NULL, ENT( pev ) );
 			WRITE_BYTE( GetAmmoIndex(szName) );		// ammo ID
 			WRITE_LONG( iAdd );		// amount
 		MESSAGE_END();
@@ -6065,17 +6126,15 @@ CBasePlayerItem *CBasePlayer::FindPlayerItem( char *pszItemName )
 
 		while ( item )
 		{
-			const char *className = STRING( item->pev->classname );
-
-			if ( pszItemName ? !strcmp( pszItemName, className ) : item == m_pActiveItem )
+			if ( pszItemName ? !strcmp( pszItemName, STRING( item->pev->classname ) ) : item == m_pActiveItem )
 			{
+				const char *className = STRING( item->pev->classname );
 				bool isMinigun = !strcmp( className, "weapon_minigun" );
 
 				if ( isMinigun && !static_cast<CMinigun *>( item )->m_fSpinning )
 					return NULL;
 
-				if ( !pszItemName && strcmp( className, "weapon_shockrifle" ) &&
-					(int) CVAR_GET_FLOAT( "mp_dropweapons" ) < 1 )
+				if ( !pszItemName && strcmp( className, "weapon_shockrifle" ) && !CanDropPlayerItem( NULL ) )
 					return NULL;
 
 				if ( isMinigun )
@@ -6261,7 +6320,7 @@ BOOL CBasePlayer::HasNamedPlayerItem( const char *pszItemName )
 //=========================================================
 BOOL CBasePlayer :: SwitchWeapon( CBasePlayerItem *pWeapon ) 
 {
-	if ( !pWeapon->CanDeploy() )
+	if ( !pWeapon || ( !pWeapon->CanDeploy() && !pWeapon->m_bExclusiveHold ) || m_fWeaponsBlocked )
 	{
 		return FALSE;
 	}
@@ -6274,7 +6333,7 @@ BOOL CBasePlayer :: SwitchWeapon( CBasePlayerItem *pWeapon )
 	}
 
 	m_pActiveItem = pWeapon;
-	pWeapon->Deploy( );
+	DeployWeapon();
 
 	return TRUE;
 }

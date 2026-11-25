@@ -327,8 +327,9 @@ void COp4Mortar::TrackTarget( void )
 	if ( !enemy || !enemy->IsAlive() )
 	{
 		Op4MortarSetHandle( m_hEnemy.m_Handle, previousEnemy );
-		enemy = Op4MortarHandleEntity( m_hEnemy.m_Handle );
 	}
+
+	enemy = Op4MortarHandleEntity( m_hEnemy.m_Handle );
 
 	if ( !enemy || !enemy->IsAlive() )
 	{
@@ -337,6 +338,7 @@ void COp4Mortar::TrackTarget( void )
 		return;
 	}
 
+	enemy = Op4MortarHandleEntity( m_hEnemy.m_Handle );
 	Vector targetPosition = enemy->pev->origin + enemy->pev->view_ofs;
 	Vector center = Center();
 
@@ -358,18 +360,22 @@ void COp4Mortar::TrackTarget( void )
 	start = start + gpGlobals->v_right * 10;
 	UTIL_MakeVectors( Vector( 0, pev->angles.y, 0 ) );
 
-	Vector direction = ( enemy->Center() - pev->origin ).Normalize();
+	enemy = Op4MortarHandleEntity( m_hEnemy.m_Handle );
+	Vector enemyCenter = enemy->Center();
+	Vector direction = ( enemyCenter - pev->origin ).Normalize();
 	Vector localDirection( DotProduct( direction, gpGlobals->v_forward ),
 	                       -DotProduct( direction, gpGlobals->v_right ), DotProduct( direction, gpGlobals->v_up ) );
 
 	m_vecIdealAngles = UTIL_VecToAngles( localDirection );
 
+	enemy = Op4MortarHandleEntity( m_hEnemy.m_Handle );
 	float distance = ( end - enemy->Center() ).Length2D();
 
 	UTIL_MakeVectors( Vector( 0, pev->angles.y + m_vecController.y, 0 ) );
 
 	float projectedX = end.x - distance * gpGlobals->v_forward.x;
 	float projectedY = end.y - distance * gpGlobals->v_forward.y;
+	enemy = Op4MortarHandleEntity( m_hEnemy.m_Handle );
 	float projectedZ = enemy->Center().z;
 	Vector projectedTarget( projectedX, projectedY, projectedZ );
 

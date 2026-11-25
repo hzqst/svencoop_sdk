@@ -470,9 +470,9 @@ void CASModule::PrintGlobals(void *file)
 		if (strlen(nameSpace) + strlen(name) < sizeof(qualifiedName))
 		{
 			if (*nameSpace)
-				UTIL_FormatString(qualifiedName, sizeof(qualifiedName), "%s::%s", nameSpace, name);
+				_snprintf(qualifiedName, sizeof(qualifiedName), "%s::%s", nameSpace, name);
 			else
-				UTIL_FormatString(qualifiedName, sizeof(qualifiedName), "%s", name);
+				_snprintf(qualifiedName, sizeof(qualifiedName), "%s", name);
 
 			ASPrintVariable(file, typeId, address, qualifiedName);
 		}

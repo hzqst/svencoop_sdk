@@ -357,7 +357,7 @@ void CHalfLifeTeamplay::DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, e
 			if ( (pk != pVictim) && (PlayerRelationship( pVictim, pk ) == GR_TEAMMATE) )
 			{
 				MESSAGE_BEGIN( MSG_ALL, gmsgDeathMsg );
-					WRITE_BYTE( ENTINDEX(ENT(pKiller)) );		// the killer
+					WRITE_BYTE( ENTINDEX( pKiller->pContainingEntity ) );		// the killer
 					WRITE_BYTE( ENTINDEX(pVictim->edict()) );	// the victim
 					WRITE_STRING( "teammate" );		// flag this as a teammate kill
 				MESSAGE_END();

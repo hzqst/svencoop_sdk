@@ -5,6 +5,7 @@
 #include "ASEntityHeaderSupport.h"
 #include "CString.h"
 #include "player.h"
+#include "server_support.h"
 #include "weapons.h"
 
 template <class T>
@@ -210,7 +211,9 @@ int PlayerWeaponEntity_AddSecondaryAmmo( int count, const CString &name, int max
 template <class T>
 bool PlayerWeaponEntity_DefaultDeploy( const CString &viewModel, const CString &weaponModel, int animation, const CString &extension, int skipLocal, int body, T *entity )
 {
-	return entity->DefaultDeploy( viewModel.Data(), weaponModel.Data(), animation, extension.Data(), skipLocal, body );
+	const char *weaponModelName = STRING( AllocStringLocal( weaponModel.Data() ) );
+	const char *viewModelName = STRING( AllocStringLocal( viewModel.Data() ) );
+	return entity->DefaultDeploy( viewModelName, weaponModelName, animation, extension.Data(), skipLocal, body );
 }
 
 template <class T>

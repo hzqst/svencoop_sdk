@@ -24,7 +24,7 @@ CASEntityFuncs::~CASEntityFuncs()
 
 CBaseEntity *CASEntityFuncs::CreateEntity( const CString &className, CScriptDictionary *dictionary, bool spawn )
 {
-	return CreateEntity( className, dictionary, spawn, g_engfuncs.pfnCreateNamedEntity );
+	return CreateEntity( className, dictionary, spawn, CreateNamedEntity_Intercept );
 }
 
 CBaseEntity *CASEntityFuncs::CreateEntity( const CString &className, CScriptDictionary *dictionary, bool spawn,
@@ -59,7 +59,7 @@ bool CASEntityFuncs::InitializeEntity( const CString &className, CBaseEntity *en
 	if ( !entity )
 		return false;
 
-	edict_t *edict = entity->pev ? entity->pev->pContainingEntity : NULL;
+	edict_t *edict = entity->edict();
 	KeyValueData keyValue = { className.Data(), "classname", className.Data(), FALSE };
 
 	::DispatchKeyValue( edict, &keyValue );
@@ -223,13 +223,13 @@ void CASEntityFuncs::SpawnStickyGibs( entvars_t *victim, const Vector &origin, i
 void CASEntityFuncs::SetOrigin( CBaseEntity *entity, const Vector &origin )
 {
 	if ( entity )
-		g_engfuncs.pfnSetOrigin( entity->pev ? entity->pev->pContainingEntity : NULL, origin );
+		g_engfuncs.pfnSetOrigin( entity->edict(), origin );
 }
 
 void CASEntityFuncs::SetModel( CBaseEntity *entity, const CString &model )
 {
 	if ( entity )
-		SetModel_Intercept( entity->pev ? entity->pev->pContainingEntity : NULL, STRING( AllocStringLocal( model.Data() ) ) );
+		SetModel_Intercept( entity->edict(), STRING( AllocStringLocal( model.Data() ) ) );
 }
 
 void CASEntityFuncs::SetSize( entvars_t *vars, const Vector &mins, const Vector &maxs )
@@ -390,11 +390,13 @@ void CASEntityFuncs::FireTargets( const CString &targetName, CBaseEntity *activa
 	entity->pev->nextthink = gpGlobals->time + delay;
 	entity->SetThink( &CBaseDelay::CallDelayThink );
 	entity->pev->button = useType;
-	entity->pev->frags = value;
-	entity->m_iszKillTarget = 0;
+	entity->pev->fuser1 = value;
 	entity->m_flDelay = 0;
 	entity->pev->target = AllocStringLocal( targetName.Data() );
-	entity->pev->owner = activator && activator->IsPlayer() && activator->pev ? activator->pev->pContainingEntity : NULL;
+	edict_t *owner = NULL;
+	if ( activator && activator->IsPlayer() && activator->pev )
+		owner = activator->pev->pContainingEntity;
+	entity->pev->owner = owner;
 }
 
 bool CASEntityFuncs::IsMasterTriggered( const CString &master, CBaseEntity *activator )

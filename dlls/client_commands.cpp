@@ -15,7 +15,9 @@
 #include "ConCommandDefs.h"
 #include "donid.h"
 #include "game.h"
+#include "iengineserver.h"
 #include "item_inventory.h"
+#include "ModelUtils.h"
 #include "nodes.h"
 #include "observer.h"
 #include "player_hud.h"
@@ -277,7 +279,6 @@ CBaseEntity *ClientCreateEntityByClassname( CBasePlayer *player, const char *cla
 #define MEDIC_CALL_RANGE           512
 #define STUCK_SEARCH_LIMIT         48
 #define STUCK_SEARCH_TRIES         64
-#define MAX_MODEL_PRECACHE         512
 #define NODE_PATH_CAPS             832
 #define GIB_NOPENALTY              3
 #define INVENTORY_WEIGHT_LIMIT     100.0f
@@ -923,9 +924,9 @@ void CommandHostInfo( CBasePlayer *player )
 
 	if ( !IS_DEDICATED_SERVER() )
 	{
-		CBaseEntity *host = UTIL_FindEntityByIndex( 1, false );
-
 		ClientPrint( to, HUD_PRINTCONSOLE, "Hosting player           : " );
+
+		CBaseEntity *host = UTIL_FindEntityByIndex( 1, false );
 
 		if ( host && host->IsPlayer() )
 		{
@@ -970,7 +971,8 @@ void CommandHostInfo( CBasePlayer *player )
 	UTIL_FormatString( text, sizeof( text ), "%d (limit is %d)", NUMBER_OF_ENTITIES(), gpGlobals->maxEntities );
 	ClientPrint( to, HUD_PRINTCONSOLE, "Edict count              : %s\n", text );
 
-	UTIL_FormatString( text, sizeof( text ), "%d (limit is %d)", UTIL_GetPrecachedModelCount(), MAX_MODEL_PRECACHE );
+	const int modelLimit = gpGlobals->maxModels;
+	UTIL_FormatString( text, sizeof( text ), "%d (limit is %d)", g_pEngineServer->NumberOfPrecachedModels(), modelLimit );
 	ClientPrint( to, HUD_PRINTCONSOLE, "Loaded models            : %s\n", text );
 }
 
@@ -1507,7 +1509,10 @@ bool PerformPlayerCommands( CBasePlayer *player, const char *command, bool &logC
 		if ( !stricmp( command, "cl_entitycount" ) )
 			UTIL_FormatString( text, sizeof( text ), "CBaseEntity count: %d of %d\n", NUMBER_OF_ENTITIES(), gpGlobals->maxEntities );
 		else
-			UTIL_FormatString( text, sizeof( text ), "Pre-cached model count: %d of %d\n", UTIL_GetPrecachedModelCount(), MAX_MODEL_PRECACHE );
+		{
+			const int modelLimit = gpGlobals->maxModels;
+			UTIL_FormatString( text, sizeof( text ), "Pre-cached model count: %d of %d\n", g_pEngineServer->NumberOfPrecachedModels(), modelLimit );
+		}
 
 		ClientPrint( pev, HUD_PRINTCONSOLE, text );
 		CLIENT_PRINTF( player->edict(), print_center, text );

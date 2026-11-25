@@ -788,7 +788,7 @@ inline bool CBaseEntity::IsMachine( void )
 inline Vector CBaseEntity::EyePosition( void )
 {
 	if ( IsBSPModel() )
-		return Center();
+		return CBaseEntity::Center();
 
 	return pev->origin + pev->view_ofs * pev->scale;
 }
@@ -1087,7 +1087,7 @@ public:
 #define DMG_ALWAYSGIB		(1 << 13)	// with this bit OR'd in, any damage type can be made to gib victims upon death.
 #define DMG_DROWN			(1 << 14)	// Drowning
 // time-based damage
-#define DMG_TIMEBASED		(~(0x3fff))	// mask for time-based damage
+#define DMG_TIMEBASED		(~(0xff003fff))	// mask for time-based damage
 
 #define DMG_PARALYZE		(1 << 15)	// slows affected creature down
 #define DMG_NERVEGAS		(1 << 16)	// nerve toxins, very bad
@@ -1235,7 +1235,12 @@ template <class T> T * GetClassPtr( T *a )
 		pev = VARS(CREATE_ENTITY());
 
 	// get the private data
+#ifdef CLIENT_DLL
 	a = (T *)GET_PRIVATE(ENT(pev));
+#else
+	edict_t *edict = ENT( pev );
+	a = edict && !edict->free ? (T *)GET_PRIVATE( edict ) : NULL;
+#endif
 
 	if (a == NULL) 
 	{

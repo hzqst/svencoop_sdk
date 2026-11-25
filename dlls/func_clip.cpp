@@ -86,7 +86,7 @@ void CFuncClip::EnableClip( void )
 	if ( m_bMonsterClip || ( pev->spawnflags & SF_CLIP_MONSTERS ) )
 		pev->flags |= FL_MONSTERCLIP;
 
-	SetTouch( NULL );
+	SetTouch( &CFuncClip::Touch );
 	m_bActive = true;
 	UTIL_SetOrigin( pev, pev->origin );
 }

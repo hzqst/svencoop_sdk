@@ -111,8 +111,7 @@ bool CKeyvaluesLexer::SkipCommentLine(void)
 	if (!IsValidReadPosition())
 		return false;
 
-	if ( m_Input.Size() - GetReadOffset() < 2 ||
-	     m_pszReadPosition[0] != '/' || m_pszReadPosition[1] != '/' )
+	if ( m_pszReadPosition[0] != '/' || m_pszReadPosition[1] != '/' )
 		return false;
 
 	m_pszReadPosition += 2;

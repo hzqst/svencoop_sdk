@@ -697,7 +697,10 @@ bool CASReflection::CreateFunctionSignature(asIScriptEngine *engine, std::string
 {
 	stream << "void " << name.Data() << '(';
 
-	for (unsigned int index = 0; index < arguments.m_uiCount; index++)
+	CASArgument *argument = arguments.m_pArguments;
+	unsigned int argumentCount = arguments.m_uiCount;
+
+	for (unsigned int index = 0; index < argumentCount; index++)
 	{
 		int typeId = generic->GetArgTypeId(firstArgument + index);
 		const char *declaration = engine->GetTypeDeclaration(typeId, true);
@@ -710,7 +713,7 @@ bool CASReflection::CreateFunctionSignature(asIScriptEngine *engine, std::string
 
 		stream << declaration;
 
-		switch (arguments.m_pArguments[index].m_ArgumentType)
+		switch (argument[index].m_ArgumentType)
 		{
 		case ARGUMENT_PRIMITIVE:
 		case ARGUMENT_ENUM:
@@ -923,10 +926,11 @@ bool CASReflection::SetArguments(asIScriptFunction *function, asIScriptContext *
 	}
 
 	asIScriptEngine *engine = CASServerManager::GetInstance()->m_pEngine;
+	CASArgument *argument = arguments.m_pArguments;
 
 	for (unsigned int index = 0; index < count; index++)
 	{
-		if (!SetContextArgument(engine, function, context, index, arguments.m_pArguments[index]))
+		if (!SetContextArgument(engine, function, context, index, argument[index]))
 			return false;
 	}
 

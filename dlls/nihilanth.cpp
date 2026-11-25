@@ -1479,6 +1479,8 @@ void CNihilanthHVR :: ZapInit( CBaseEntity *pEnemy )
 	EMIT_SOUND_DYN( edict(), CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM, 0, 100 );
 }
 
+extern cvar_t sk_nihilanth_zap;
+
 void CNihilanthHVR :: ZapThink( void  )
 {
 	pev->nextthink = gpGlobals->time + 0.05;
@@ -1509,7 +1511,7 @@ void CNihilanthHVR :: ZapThink( void  )
 		if (pEntity != NULL && pEntity->pev->takedamage)
 		{
 			ClearMultiDamage( );
-			pEntity->TraceAttack( pev, gSkillData.nihilanthZap, pev->velocity, &tr, DMG_SHOCK );
+			pEntity->TraceAttack( pev, sk_nihilanth_zap.value, pev->velocity, &tr, DMG_SHOCK );
 			ApplyMultiDamage( pev, pev );
 		}
 

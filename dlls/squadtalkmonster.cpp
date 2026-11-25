@@ -501,6 +501,16 @@ void CSquadTalkMonster::PrescheduleThink( void )
 		SetConditions( bits_COND_CLIENT_UNSEEN );
 }
 
+void CSquadTalkMonster::SetActivity( Activity newActivity )
+{
+	if ( newActivity == ACT_IDLE )
+	{
+		int sequence = LookupActivity( ACT_IDLE );
+	}
+
+	CBaseMonster::SetActivity( newActivity );
+}
+
 void CSquadTalkMonster::HandleAnimEvent( MonsterEvent_t *pEvent )
 {
 	switch ( pEvent->event )
@@ -839,6 +849,49 @@ void CSquadTalkMonster::StartTask( Task_t *pTask )
 {
 	switch ( pTask->iTask )
 	{
+		case TASK_OP4_MEDIC_SAY_HEAL:
+			if ( m_hHealTarget != NULL && m_hHealTarget->pev->health >= m_hHealTarget->pev->max_health )
+			{
+				if ( pev->spawnflags & SF_MONSTER_PREDISASTER )
+					m_hTargetEnt = NULL;
+
+				TaskFail();
+				break;
+			}
+
+			Talk( 2 );
+			m_hTalkTarget = m_hHealTarget;
+
+			if ( m_MonsterState != MONSTERSTATE_COMBAT )
+			{
+				const char *sentence = "MG_HEAL";
+
+				if ( RANDOM_LONG( 0, 5 ) >= 4 && m_hHealTarget != NULL && m_hHealTarget->pev->health < 50
+				     && m_hHealTarget->MyMonsterPointer()->m_bloodColor == BLOOD_COLOR_RED )
+					sentence = "!FG_CURE2";
+
+				PlaySentence( sentence, 2, VOL_NORM, ATTN_IDLE );
+			}
+
+			if ( m_hHealTarget != NULL && m_hHealTarget->pev->health < m_hHealTarget->pev->max_health )
+			{
+				if ( !m_hHealTarget->IsAlive() && ReviveMe( m_hHealTarget ) )
+					break;
+
+				TaskComplete();
+			}
+			else
+				TaskFail();
+			break;
+
+		case TASK_OP4_MEDIC_RESET_HEAL:
+			m_hHealTarget = NULL;
+			m_hTalkTarget = NULL;
+			m_hTargetEnt = NULL;
+			m_fReviving = false;
+			TaskComplete();
+			break;
+
 		case TASK_TLK_SPEAK:
 			FIdleSpeak();
 			TaskComplete();
@@ -919,8 +972,15 @@ void CSquadTalkMonster::StartTask( Task_t *pTask )
 			UTIL_MakeVectorsPrivate( angles, move, NULL, NULL );
 
 			Vector destination = pev->origin + move * pTask->flData;
+			Vector actualEnd( 0, 0, 0 );
+			BOOL moved = FALSE;
 
-			if ( MoveToLocation( ACT_WALK, 2, destination ) )
+			if ( CheckLocalMove( pev->origin, destination, NULL, NULL, &actualEnd, false ) >= LOCALMOVE_VALID )
+				moved = MoveToLocation( ACT_WALK, 2, destination );
+			else if ( ( pev->origin - actualEnd ).Length() > pTask->flData * 0.75 )
+				moved = MoveToLocation( ACT_WALK, 2, actualEnd );
+
+			if ( moved )
 				TaskComplete();
 			else if ( FindCover( pev->origin, pev->view_ofs, 0, CoverRadius() ) )
 			{
@@ -957,23 +1017,26 @@ void CSquadTalkMonster::RunTask( Task_t *pTask )
 				pPlayer = g_engfuncs.pfnPEntityOfEntIndex( 1 );
 
 				if ( pPlayer )
+				{
 					IdleHeadTurn( pPlayer->v.origin );
+					m_flStopTalkTime = gpGlobals->time + 2;
+
+					if ( pTask->iTask == TASK_TLK_CLIENT_STARE )
+					{
+						if ( ( pPlayer->v.origin - pev->origin ).Length2D() > TLK_STARE_DIST )
+							TaskFail();
+
+						UTIL_MakeVectors( pPlayer->v.angles );
+
+						if ( UTIL_DotPoints( pPlayer->v.origin, pev->origin, gpGlobals->v_forward ) < m_flFieldOfView )
+							TaskFail();
+					}
+				}
 			}
 			else
 			{
 				TaskFail();
 				return;
-			}
-
-			if ( pTask->iTask == TASK_TLK_CLIENT_STARE )
-			{
-				if ( ( pPlayer->v.origin - pev->origin ).Length2D() > TLK_STARE_DIST )
-					TaskFail();
-
-				UTIL_MakeVectors( pPlayer->v.angles );
-
-				if ( UTIL_DotPoints( pPlayer->v.origin, pev->origin, gpGlobals->v_forward ) < m_flFieldOfView )
-					TaskFail();
 			}
 
 			if ( gpGlobals->time > m_flWaitFinished )
@@ -1016,6 +1079,8 @@ void CSquadTalkMonster::RunTask( Task_t *pTask )
 			break;
 
 		case TASK_WAIT_FOR_MOVEMENT:
+		case TASK_WAIT_FOR_MOVEMENT_AP:
+		case TASK_WAIT_FOR_MOVEMENT_ENEMY_OCCLUDED:
 			if ( IsTalking() && m_hTalkTarget != NULL )
 				IdleHeadTurn( m_hTalkTarget->pev->origin );
 			else

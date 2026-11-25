@@ -5,10 +5,16 @@
 #include "server_entvars.h"
 #include "server_support.h"
 
-bool CreateEntityActorValid( CBaseEntity *entity )
+static edict_t *GetCreateEntityEdict( CBaseEntity *entity )
 {
-	return entity && entity->pev && entity->pev->pContainingEntity &&
-	       !entity->pev->pContainingEntity->free && !FNullEnt( entity->pev->pContainingEntity );
+	if ( !entity || !entity->pev )
+		return NULL;
+
+	edict_t *edict = entity->pev->pContainingEntity;
+	if ( !edict || edict->free || FNullEnt( edict ) )
+		return NULL;
+
+	return edict;
 }
 
 LINK_ENTITY_TO_CLASS( trigger_createentity, CTriggerCreateEntity );
@@ -72,10 +78,12 @@ void CTriggerCreateEntity::Spawn( void )
 
 void CTriggerCreateEntity::Precache( void )
 {
+	KeyValueLink *entry = m_pKeyValues;
+
 	if ( m_iszCrtEntChildClass )
 		UTIL_PrecacheOther( STRING( m_iszCrtEntChildClass ) );
 
-	for ( KeyValueLink *entry = m_pKeyValues; entry; entry = entry->next )
+	for ( ; entry; entry = entry->next )
 	{
 		if ( !stricmp( entry->key.szKeyName, "-model" ) )
 			UTIL_PrecacheModel( this, entry->key.szValue );
@@ -93,8 +101,12 @@ void CTriggerCreateEntity::Use( CBaseEntity *activator, CBaseEntity *caller, USE
 	}
 
 	CBaseEntity *entity = CBaseEntity::Create( STRING( m_iszCrtEntChildClass ), pev->origin, pev->angles, true, NULL );
+	edict_t *edict = GetCreateEntityEdict( entity );
 
-	if ( !CreateEntityActorValid( entity ) )
+	if ( edict )
+		edict = GetCreateEntityEdict( entity );
+
+	if ( !edict )
 	{
 		ALERT( at_console, "Trigger_createentity \"%s\": Class \"%s\" does not exist!\n",
 		       STRING( pev->targetname ), STRING( m_iszCrtEntChildClass ) );
@@ -124,7 +136,7 @@ void CTriggerCreateEntity::Use( CBaseEntity *activator, CBaseEntity *caller, USE
 			else
 				source = UTIL_FindEntityByTargetname( NULL, sourceName );
 
-			if ( !CreateEntityActorValid( source ) )
+			if ( !GetCreateEntityEdict( source ) )
 			{
 				ALERT( at_console, "Trigger_createentity \"%s\": Could not find source entity \"%s\" for keyvalue \"%s\".\n",
 				       STRING( pev->targetname ), sourceName, name );
@@ -201,6 +213,6 @@ void CTriggerCreateEntity::Use( CBaseEntity *activator, CBaseEntity *caller, USE
 		return;
 	}
 
-	DispatchSpawn( entity->edict() );
+	DispatchSpawn( edict );
 	SUB_UseTargets( activator, USE_TOGGLE, 0 );
 }

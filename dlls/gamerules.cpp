@@ -127,32 +127,30 @@ EntityHandle<CBaseEntity> CGameRules :: GetPlayerSpawnSpot( CBasePlayer *pPlayer
 //=========================================================
 BOOL CGameRules::CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerItem *pWeapon )
 {
-	// only living players can have items
-	if ( pPlayer->pev->deadflag != DEAD_NO )
-		return FALSE;
+	CBasePlayerItem *owned = pPlayer->FindItem( pWeapon->pev ? STRING( pWeapon->pev->classname ) : "" );
+	const char *ammoName = pWeapon->pszAmmo1();
+	bool canHaveAmmo = ammoName && CanHaveAmmo( pPlayer, CBasePlayer::GetAmmoIndex( ammoName ), pWeapon->iMaxAmmo1(), NULL );
 
-	if ( pWeapon->pszAmmo1() )
+	if ( owned )
 	{
-		if ( !CanHaveAmmo( pPlayer, pWeapon->pszAmmo1(), pWeapon->iMaxAmmo1() ) )
-		{
-			// we can't carry anymore ammo for this gun. We can only 
-			// have the gun if we aren't already carrying one of this type
-			if ( pPlayer->HasPlayerItem( pWeapon ) )
-			{
-				return FALSE;
-			}
-		}
-	}
-	else
-	{
-		// weapon doesn't use ammo, don't take another if you already have it.
-		if ( pPlayer->HasPlayerItem( pWeapon ) )
-		{
+		if ( !canHaveAmmo && !owned->CanHaveDuplicates() )
 			return FALSE;
+
+		if ( CVAR_GET_FLOAT( "mp_weaponstay" ) > 0 && !( pWeapon->pev->spawnflags & SF_CREATEDWEAPON ) )
+		{
+			if ( !owned->CanHaveDuplicates() )
+				return FALSE;
 		}
+		else if ( pWeapon->m_bIsNotAmmoItem )
+			return FALSE;
 	}
 
-	// note: will fall through to here if GetItemInfo doesn't fill the struct!
+	if ( ( pWeapon->iFlags() & ITEM_FLAG_EXHAUSTIBLE ) && pWeapon->PrimaryAmmoIndex() > 0 )
+	{
+		int maxAmmo = pWeapon->iMaxAmmo1();
+		return pPlayer->m_rgAmmo[pWeapon->PrimaryAmmoIndex()] < maxAmmo;
+	}
+
 	return TRUE;
 }
 

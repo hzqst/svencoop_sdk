@@ -705,8 +705,6 @@ static const char *g_szMapGenericFiles[] =
 
 void CWorld :: Precache( void )
 {
-	UTIL_ResetPrecachedModelCount();
-
 	g_pLastSpawn = NULL;
 
 	g_engfuncs.pfnForceUnmodified( force_exactfile, NULL, NULL, "cl_dlls/client.dll" );

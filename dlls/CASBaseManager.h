@@ -102,6 +102,7 @@ private:
 	friend class CASUtility;
 	friend class CASEntityLoader;
 	friend class CASBaseConCommand;
+	friend class CWriteFileSystemToFile;
 
 	friend CASModule *Module_GetActiveModule( void );
 	friend CASModuleHookManager *ModuleHookManager_GetActiveHookManager( void );

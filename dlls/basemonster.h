@@ -476,8 +476,8 @@ public:
 
 		BOOL FCheckAITrigger( void );// checks and, if necessary, fires the monster's trigger target. 
 		// friendly fire checks for squad monsters, against the enemy, a target or a position
-		virtual bool NoFriendlyFire( void ) { return NoFriendlyFire( pev->origin ); }
-		virtual bool NoFriendlyFire( Vector vecPos ) { return NoFriendlyFire( vecPos, m_hEnemy ); }
+		virtual bool NoFriendlyFire( void ) { return CBaseMonster::NoFriendlyFire( pev->origin ); }
+		virtual bool NoFriendlyFire( Vector vecPos );
 		virtual bool NoFriendlyFire( Vector vecPos, CBaseEntity *pTarget );
 		virtual bool NoFriendlyFireToPos( Vector vecPos );
 		virtual bool FVisibleGunPos( CBaseEntity *pEntity, const Vector &vecSrc );
@@ -510,7 +510,7 @@ public:
 	{
 		if ( FClassnameIs( pev, "monster_osprey" ) || FClassnameIs( pev, "monster_blkop_osprey" ) )
 		{
-			Vector vecFirst, vecSecond, vecAngles;
+			Vector vecFirst( 0, 0, 0 ), vecSecond( 0, 0, 0 ), vecAngles( 0, 0, 0 );
 
 			GetBonePosition( OSPREY_FIRST_TARGET_BONE, vecFirst, vecAngles );
 			GetBonePosition( OSPREY_SECOND_TARGET_BONE, vecSecond, vecAngles );

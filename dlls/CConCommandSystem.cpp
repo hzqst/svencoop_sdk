@@ -51,7 +51,7 @@ void find_Callback(const CCommand &command)
 	if (command.ArgC() == 2)
 		CConCommandSystem::GetInstance()->FindCommands(command.Arg(1), player);
 	else
-		g_engfuncs.pfnClientPrintf(player->pev ? player->edict() : NULL, print_console, "find usage: find <substring>\n");
+		g_engfuncs.pfnClientPrintf(player->edict(), print_console, "find usage: find <substring>\n");
 }
 
 CClientCommand g_find("find", find_Callback, ConCommandFlag::None, "Find commands using a given substring");
@@ -62,7 +62,6 @@ CConCommandSystem::CConCommandSystem() : m_iState(COMMAND_SYSTEM_STOPPED), m_pUn
 
 CConCommandSystem::~CConCommandSystem()
 {
-	Shutdown();
 }
 
 CConCommandSystem *CConCommandSystem::GetInstance(void)
@@ -217,7 +216,7 @@ void CConCommandSystem::Visit(CCVar &variable, void *data)
 	CommandContext *context = (CommandContext *)data;
 	const CCommand *command = context->m_pCommand;
 	CBasePlayer *player = GetCurrentPlayer();
-	edict_t *entity = player && player->pev ? player->edict() : NULL;
+	edict_t *entity = player ? player->edict() : NULL;
 
 	if (command->ArgC() == 1)
 		ConsoleOutput(entity, "\"%s\" is \"%s\"\n", variable.GetName(), variable.m_Value.Data());
@@ -246,7 +245,7 @@ void CConCommandSystem::FindCommands(const char *prefix, CBasePlayer *player) co
 	if (!prefix || !*prefix || !player)
 		return;
 
-	edict_t *entity = player->pev ? player->edict() : NULL;
+	edict_t *entity = player->edict();
 
 	for (std::map<CString, CBaseConCommand *, CStringCaseInsensitiveLess>::const_iterator it = m_Commands.begin(); it != m_Commands.end(); it++)
 	{

@@ -277,15 +277,17 @@ CASPluginManager::PluginCompStats CASPluginManager::LoadPluginsFromList(PluginLi
 {
 	PluginCompStats stats = {};
 
-	if (!file.m_pPlugins)
+	CKvBlockNode *plugins = file.m_pPlugins.get();
+
+	if (!plugins)
 		return stats;
 
 	file.m_bLoaded = true;
-	stats.m_uiTotal = file.m_pPlugins->GetChildren().size();
+	stats.m_uiTotal = plugins->GetChildren().size();
 	CASLog::GetInstance()->Log(PLUGIN_OPERATION_LOG_LEVEL,
 		"Plugin list '%s' - %u plugin(s) listed\n", file.m_Name.Data(), stats.m_uiTotal);
 
-	const CKvBlockNode::Children &children = file.m_pPlugins->GetChildren();
+	const CKvBlockNode::Children &children = plugins->GetChildren();
 
 	for (CKvBlockNode::Children::const_iterator entry = children.begin(); entry != children.end(); entry++)
 	{
@@ -923,7 +925,7 @@ void OutputModuleScriptInfo(edict_t *player, CASModule *module)
 
 	if (info)
 	{
-		information.Format("Name: %s\nAuthor: %s\nContact info: %s\n", module->GetModuleName(),
+		information = UTIL_VarArgs("Name: %s\nAuthor: %s\nContact info: %s\n", module->GetModuleName(),
 			info->GetAuthor().IsEmpty() ? "<No author info available>" : info->GetAuthor().Data(),
 			info->GetContactInfo().IsEmpty() ? "<no contact info available>" : info->GetContactInfo().Data());
 	}

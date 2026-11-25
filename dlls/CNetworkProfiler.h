@@ -22,6 +22,8 @@ public:
 	CNetworkProfiler();
 	~CNetworkProfiler();
 
+	static CNetworkProfiler *GetInstance();
+
 	void Reset();
 	void Think();
 	void GenerateReport( std::string &output, ReportMode_t mode, unsigned int topN );

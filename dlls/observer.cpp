@@ -332,7 +332,7 @@ void CObserver::CheckTarget( void )
 		return;
 	}
 
-	if ( !target->IsAlive() && gpGlobals->time > (float) ( (double) target->m_fDeadTime + 2.0 ) )
+	if ( !target->IsAlive() && gpGlobals->time > (float) ( (double) m_hObserverTarget->m_fDeadTime + 2.0 ) )
 		FindNextPlayer( false );
 }
 
@@ -533,7 +533,7 @@ void CObserver::StopObserver( bool respawn )
 void CObserver::Think( void )
 {
 	if ( ( m_hPlayer->pev->iuser1 == OBS_CHASE_LOCKED || m_hPlayer->pev->iuser1 == OBS_CHASE_FREE )
-		&& m_hObserverTarget && m_hObserverTarget->IsAlive() && m_hObserverTarget->IsConnected() )
+		&& m_hObserverTarget && m_hObserverTarget->IsAlive() )
 	{
 		Vector distance = m_hObserverTarget->pev->origin - m_hPlayer->pev->origin;
 

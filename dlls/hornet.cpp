@@ -56,6 +56,9 @@ int CHornet :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, floa
 	return CBaseMonster :: TakeDamage ( pevInflictor, pevAttacker, flDamage, bitsDamageType );
 }
 
+extern cvar_t sk_hornet_dmg;
+extern cvar_t sk_hornet_pdmg;
+
 //=========================================================
 //=========================================================
 void CHornet :: Spawn( void )
@@ -114,12 +117,12 @@ void CHornet :: Spawn( void )
 	if ( !FNullEnt(pev->owner) && (pev->owner->v.flags & FL_CLIENT) )
 	{
 		if ( pev->dmg <= 0 )
-			pev->dmg = gSkillData.plrDmgHornet;
+			pev->dmg = sk_hornet_pdmg.value;
 	}
 	else
 	{
 		// no real owner, or owner isn't a client. 
-		pev->dmg = gSkillData.monDmgHornet;
+		pev->dmg = sk_hornet_dmg.value;
 	}
 	
 	pev->nextthink = gpGlobals->time + 0.1;

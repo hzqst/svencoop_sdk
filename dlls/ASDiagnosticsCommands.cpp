@@ -34,13 +34,15 @@ void as_globals_Callback( const CCommand &command )
 	if ( !player )
 		return;
 
+	edict_t *recipient = player->edict();
+
 	char buffer[256];
 
 	if ( command.ArgC() == 1 )
 	{
 		UTIL_FormatString( buffer, sizeof( buffer ),
 		                   "as_globals: Outputting global variables to default file \"%s\"\n", "asglobals" );
-		CLIENT_PRINTF( player->edict(), print_console, buffer );
+		CLIENT_PRINTF( recipient, print_console, buffer );
 		ASPrintGlobals( "asglobals" );
 	}
 	else if ( command.ArgC() == 2 )
@@ -49,13 +51,13 @@ void as_globals_Callback( const CCommand &command )
 
 		if ( strstr( fileName, ".." ) || strstr( fileName, "/" ) || strstr( fileName, "\\" ) )
 		{
-			CLIENT_PRINTF( player->edict(), print_console,
+			CLIENT_PRINTF( recipient, print_console,
 			               "as_globals: Cannot output global variables; file name contains '..', '/' or '\\', which is not allowed\n" );
 			return;
 		}
 
 		UTIL_FormatString( buffer, sizeof( buffer ), "as_globals: Outputting global variables to file \"%s\"\n", fileName );
-		CLIENT_PRINTF( player->edict(), print_console, buffer );
+		CLIENT_PRINTF( recipient, print_console, buffer );
 		ASPrintGlobals( fileName );
 	}
 	else
@@ -65,7 +67,7 @@ void as_globals_Callback( const CCommand &command )
 		                   "\"as_globals\" to output global variables to default file \"%s\"\n"
 		                   "\"as_globals <filename> to output to file of given name\n",
 		                   "asglobals" );
-		CLIENT_PRINTF( player->edict(), print_console, buffer );
+		CLIENT_PRINTF( recipient, print_console, buffer );
 	}
 }
 
@@ -76,13 +78,15 @@ void as_generate_config_Callback( const CCommand &command )
 	if ( !player )
 		return;
 
+	edict_t *recipient = player->edict();
+
 	char buffer[256];
 
 	if ( command.ArgC() == 1 )
 	{
 		UTIL_FormatString( buffer, sizeof( buffer ),
 		                   "as_generate_config: Outputting config to default file \"%s\"\n", "asconfig" );
-		CLIENT_PRINTF( player->edict(), print_console, buffer );
+		CLIENT_PRINTF( recipient, print_console, buffer );
 		ASOutputConfig( "asconfig" );
 	}
 	else if ( command.ArgC() == 2 )
@@ -91,13 +95,13 @@ void as_generate_config_Callback( const CCommand &command )
 
 		if ( strstr( fileName, ".." ) || strstr( fileName, "/" ) || strstr( fileName, "\\" ) )
 		{
-			CLIENT_PRINTF( player->edict(), print_console,
+			CLIENT_PRINTF( recipient, print_console,
 			               "as_generate_config: Cannot output config; file name contains '..', '/' or '\\', which is not allowed\n" );
 			return;
 		}
 
 		UTIL_FormatString( buffer, sizeof( buffer ), "as_generate_config: Outputting config to file \"%s\"\n", fileName );
-		CLIENT_PRINTF( player->edict(), print_console, buffer );
+		CLIENT_PRINTF( recipient, print_console, buffer );
 		ASOutputConfig( fileName );
 	}
 	else
@@ -107,7 +111,7 @@ void as_generate_config_Callback( const CCommand &command )
 		                   "\"as_generate_config\" to output config to default file \"%s\"\n"
 		                   "\"as_generate_config <filename>\" to output to file of given name\n",
 		                   "asconfig" );
-		CLIENT_PRINTF( player->edict(), print_console, buffer );
+		CLIENT_PRINTF( recipient, print_console, buffer );
 	}
 }
 
@@ -138,7 +142,7 @@ void as_fs_dumpfilesystem_Callback( const CCommand &command )
 	{
 		CWriteFileSystemToFile operation( writer, writeDetails );
 
-		operation.Write( *CASServerManager::GetInstance()->m_pFileSystem );
+		operation.Write();
 	}
 
 	if ( writer.m_hFile && !writer.m_bError )
@@ -178,11 +182,12 @@ void as_fs_validate_file_usage_Callback( const CCommand &command )
 
 void as_execute_Callback( const CCommand &command )
 {
+	int argumentCount = command.ArgC();
 	const char *moduleName;
 
-	if ( command.ArgC() == 2 )
+	if ( argumentCount == 2 )
 		moduleName = "MapModule";
-	else if ( command.ArgC() == 3 )
+	else if ( argumentCount == 3 )
 		moduleName = command.Arg( 1 );
 	else
 	{
@@ -205,7 +210,7 @@ void as_execute_Callback( const CCommand &command )
 		return;
 	}
 
-	ExecuteString( engine, command.Arg( command.ArgC() - 1 ), module );
+	ExecuteString( engine, command.Arg( argumentCount - 1 ), module );
 }
 
 void as_generate_includes_Callback( const CCommand &command )
@@ -215,9 +220,11 @@ void as_generate_includes_Callback( const CCommand &command )
 	if ( !player )
 		return;
 
+	edict_t *recipient = player->edict();
+
 	if ( command.ArgC() != 3 )
 	{
-		CLIENT_PRINTF( player->edict(), print_console,
+		CLIENT_PRINTF( recipient, print_console,
 		               "as_generate_includes usage:\n"
 		               "\"as_generate_includes\" <module type> <filename> to output the includes of the given module type to the given filename\n" );
 		return;
@@ -227,7 +234,7 @@ void as_generate_includes_Callback( const CCommand &command )
 
 	if ( strstr( fileName, ".." ) || strstr( fileName, "/" ) || strstr( fileName, "\\" ) )
 	{
-		CLIENT_PRINTF( player->edict(), print_console,
+		CLIENT_PRINTF( recipient, print_console,
 		               "as_generate_includes: Cannot output includes; file name contains '..', '/' or '\\', which is not allowed\n" );
 		return;
 	}
@@ -243,21 +250,24 @@ void as_generate_includes_Callback( const CCommand &command )
 	else
 	{
 		UTIL_FormatString( buffer, sizeof( buffer ), "as_generate_includes: unknown module type \"%s\"!\n", moduleName );
-		CLIENT_PRINTF( player->edict(), print_console, buffer );
+		CLIENT_PRINTF( recipient, print_console, buffer );
 		return;
 	}
 
 	CASModuleInfo *info = CASModuleInfo::FindModuleInfo( moduleType );
 
 	if ( !info )
+	{
+		CLIENT_PRINTF( recipient, print_console, buffer );
 		return;
+	}
 
 	char outputFileName[MAX_PATH + 1];
 	int length = UTIL_FormatString( outputFileName, sizeof( outputFileName ), "%s.txt", fileName );
 
 	if ( (unsigned int) length >= sizeof( outputFileName ) )
 	{
-		CLIENT_PRINTF( player->edict(), print_console, "as_generate_includes: failed to format filename!\n" );
+		CLIENT_PRINTF( recipient, print_console, "as_generate_includes: failed to format filename!\n" );
 		return;
 	}
 
@@ -281,7 +291,7 @@ void as_generate_includes_Callback( const CCommand &command )
 		UTIL_FormatString( buffer, sizeof( buffer ), "as_generate_includes: failed to open file \"%s\" for writing!\n", fileName );
 	}
 
-	CLIENT_PRINTF( player->edict(), print_console, buffer );
+	CLIENT_PRINTF( recipient, print_console, buffer );
 }
 
 void as_listmapscriptinfo_Callback( const CCommand &command )
@@ -289,7 +299,10 @@ void as_listmapscriptinfo_Callback( const CCommand &command )
 	CBasePlayer *player = CConCommandSystem::GetInstance()->GetCurrentPlayer();
 
 	if ( player )
-		OutputModuleScriptInfo( player->edict(), CASServerManager::GetInstance()->GetMapModule() );
+	{
+		edict_t *recipient = player->edict();
+		OutputModuleScriptInfo( recipient, CASServerManager::GetInstance()->GetMapModule() );
+	}
 }
 
 void as_listplugins_Callback( const CCommand &command )
@@ -297,7 +310,10 @@ void as_listplugins_Callback( const CCommand &command )
 	CBasePlayer *player = CConCommandSystem::GetInstance()->GetCurrentPlayer();
 
 	if ( player )
-		CASServerManager::GetInstance()->m_pPluginManager->ListPlugins( player->edict() );
+	{
+		edict_t *recipient = player->edict();
+		CASServerManager::GetInstance()->m_pPluginManager->ListPlugins( recipient );
+	}
 }
 
 void as_plugins_Callback( const CCommand &command )
@@ -344,13 +360,14 @@ void as_showversioninfo_Callback( const CCommand &command )
 	if ( !player )
 		return;
 
+	edict_t *recipient = player->edict();
 	char buffer[512];
 	int length = UTIL_FormatString( buffer, sizeof( buffer ),
 	                                "Sven Co-op Angelscript API\nAngelscript version: %s\nSC API version: %s\n",
 	                                ANGELSCRIPT_VERSION_STRING, CASDocumentation::API_VERSION );
 
 	if ( (unsigned int) length < sizeof( buffer ) )
-		CLIENT_PRINTF( player->edict(), print_console, buffer );
+		CLIENT_PRINTF( recipient, print_console, buffer );
 }
 
 void as_menuselect_Callback( const CCommand &command )

@@ -35,6 +35,16 @@ TYPEDESCRIPTION CTriggerChangeSky::m_SaveData[] = {
 
 IMPLEMENT_SAVERESTORE( CTriggerChangeSky, CBaseDelay );
 
+static bool CanChangeSkyFor( CBaseEntity *entity )
+{
+	if ( !entity || !entity->pev )
+		return false;
+
+	edict_t *edict = entity->edict();
+
+	return edict && !edict->free && !FNullEnt( edict ) && entity->IsPlayer();
+}
+
 void CTriggerChangeSky::KeyValue( KeyValueData *pkvd )
 {
 	if ( FStrEq( pkvd->szKeyName, "skyname" ) )
@@ -118,15 +128,15 @@ void CTriggerChangeSky::Use( CBaseEntity *activator, CBaseEntity *caller, USE_TY
 		{
 			ALERT( at_aiconsole, "Changing sky for all players to \"%s\" RGB %d %d %d.\n",
 			       skyName, red, green, blue );
-			MESSAGE_BEGIN( MSG_ALL, gmsgChangeSky );
+			MESSAGE_BEGIN( MSG_ALL, gmsgChangeSky, g_vecZero );
 		}
 		else
 		{
 			CBaseEntity *player = NULL;
 
-			if ( activator && activator->pev && UTIL_IsValidEntity( activator->edict() ) && activator->IsPlayer() )
+			if ( CanChangeSkyFor( activator ) )
 				player = activator;
-			else if ( caller && caller->pev && UTIL_IsValidEntity( caller->edict() ) && caller->IsPlayer() )
+			else if ( CanChangeSkyFor( caller ) )
 				player = caller;
 
 			if ( !player )
@@ -137,7 +147,7 @@ void CTriggerChangeSky::Use( CBaseEntity *activator, CBaseEntity *caller, USE_TY
 
 			ALERT( at_aiconsole, "Changing sky for one player to \"%s\" RGB %d %d %d.\n",
 			       skyName, red, green, blue );
-			MESSAGE_BEGIN( MSG_ONE, gmsgChangeSky, NULL, player->pev );
+			MESSAGE_BEGIN( MSG_ONE, gmsgChangeSky, g_vecZero, player->edict() );
 		}
 
 		WRITE_STRING( skyName );

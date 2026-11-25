@@ -19,6 +19,16 @@ CNetworkProfiler::~CNetworkProfiler()
 {
 }
 
+CNetworkProfiler *CNetworkProfiler::GetInstance()
+{
+	static CNetworkProfiler *pInstance = NULL;
+
+	if ( !pInstance )
+		pInstance = new CNetworkProfiler;
+
+	return pInstance;
+}
+
 bool CNetworkProfiler::UserMsgProfileDataSorter_t::operator()( const UserMsgProfileData_t *left, const UserMsgProfileData_t *right ) const
 {
 	// Not a strict ordering: equal totals compare true

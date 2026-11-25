@@ -36,12 +36,12 @@ void CTriggerCustomSave::KeyValue( KeyValueData *data )
 {
 	if ( FStrEq( data->szKeyName, "m_iszTrigger" ) )
 	{
-		m_iszTrigger = ALLOC_STRING( data->szValue );
+		m_iszTrigger = AllocStringLocal( data->szValue );
 		data->fHandled = TRUE;
 	}
 	else if ( FClassnameIs( pev, "trigger_load" ) && FStrEq( data->szKeyName, "m_iszLevelName" ) )
 	{
-		m_iszLevelName = ALLOC_STRING( data->szValue );
+		m_iszLevelName = AllocStringLocal( data->szValue );
 		m_pszSaveName[0] = 0;
 		data->fHandled = TRUE;
 	}
@@ -106,10 +106,9 @@ void CTriggerCustomSave::SaveData( void )
 		case VAR_STRING:
 		{
 			const char *string = STRING( *(string_t *) data );
-			size_t length = strlen( string ) + 1;
 
-			text = new char[length];
-			UTIL_FormatString( text, length, "%s", string );
+			text = new char[strlen( string ) + 1];
+			UTIL_FormatString( text, strlen( string ) + 1, "%s", string );
 			break;
 		}
 		case VAR_VECTOR:
@@ -132,7 +131,7 @@ void CTriggerCustomSave::SaveData( void )
 		{
 			edict_t *edict = (edict_t *) data;
 
-			if ( !edict || edict->free || !ENTINDEX( edict ) )
+			if ( !edict || edict->free || FNullEnt( edict ) )
 				return;
 
 			text = new char[512];
@@ -314,14 +313,14 @@ void CTriggerCustomSave::LoadData( void )
 	if ( !text )
 	{
 		ALERT( at_console, "Trigger_load \"%s\": Could not find label \"%s\" to load from.\n",
-		       STRING( pev->targetname ), label );
+		       STRING( pev->targetname ), STRING( pev->netname ) );
 		return;
 	}
 
 	switch ( type )
 	{
 		case VAR_STRING:
-			*(string_t *) data = ALLOC_STRING( text );
+			*(string_t *) data = AllocStringLocal( text );
 			break;
 		case VAR_VECTOR:
 			UTIL_StringToVectorND( (float *) data, 3, text, ' ' );
@@ -337,8 +336,8 @@ void CTriggerCustomSave::LoadData( void )
 			edict_t *edict = (edict_t *) data;
 
 			// The returned storage is used directly as an edict, without dereferencing it
-			if ( edict && !edict->free && ENTINDEX( edict ) )
-				edict->v.targetname = ALLOC_STRING( text );
+			if ( edict && !edict->free && !FNullEnt( edict ) )
+				edict->v.targetname = AllocStringLocal( text );
 
 			break;
 		}

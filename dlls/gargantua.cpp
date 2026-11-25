@@ -636,6 +636,9 @@ void CGargantua :: FlameControls( float angleX, float angleY )
 }
 
 
+extern cvar_t sk_gargantua_dmg_fire;
+extern cvar_t sk_gargantua_dmg_slash;
+
 bool CGargantua :: FlameUpdate( void )
 {
 	int				i;
@@ -672,7 +675,7 @@ bool CGargantua :: FlameUpdate( void )
 				UTIL_DecalTrace( &trace, DECAL_SMALLSCORCH1 + RANDOM_LONG(0,2) );
 			}
 			// RadiusDamage( trace.vecEndPos, pev, pev, gSkillData.gargantuaDmgFire, CLASS_ALIEN_MONSTER, DMG_BURN );
-			FlameDamage( vecStart, trace.vecEndPos, pev, pev, gSkillData.gargantuaDmgFire, CLASS_ALIEN_MONSTER, DMG_BURN );
+			FlameDamage( vecStart, trace.vecEndPos, pev, pev, sk_gargantua_dmg_fire.value, CLASS_ALIEN_MONSTER, DMG_BURN );
 
 			MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
 				WRITE_BYTE( TE_ELIGHT );
@@ -1235,7 +1238,7 @@ void CGargantua::HandleAnimEvent(MonsterEvent_t *pEvent)
 	case GARG_AE_SLASH_LEFT:
 		{
 			// HACKHACK!!!
-			CBaseEntity *pHurt = GargantuaCheckTraceHullAttack( GARG_ATTACKDIST + 10.0, gSkillData.gargantuaDmgSlash, DMG_SLASH );
+			CBaseEntity *pHurt = GargantuaCheckTraceHullAttack( GARG_ATTACKDIST + 10.0, sk_gargantua_dmg_slash.value, DMG_SLASH );
 			if (pHurt)
 			{
 				if ( pHurt->pev->flags & (FL_MONSTER|FL_CLIENT) )

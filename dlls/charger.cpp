@@ -41,27 +41,27 @@ void CBaseCharger::KeyValue( KeyValueData *data )
 	}
 	else if ( FStrEq( data->szKeyName, "TriggerOnEmpty" ) )
 	{
-		m_iszTriggerOnEmpty = ALLOC_STRING( data->szValue );
+		m_iszTriggerOnEmpty = AllocStringLocal( data->szValue );
 		data->fHandled = TRUE;
 	}
 	else if ( FStrEq( data->szKeyName, "TriggerOnRecharged" ) )
 	{
-		m_iszTriggerOnRecharged = ALLOC_STRING( data->szValue );
+		m_iszTriggerOnRecharged = AllocStringLocal( data->szValue );
 		data->fHandled = TRUE;
 	}
 	else if ( FStrEq( data->szKeyName, "CustomDeniedSound" ) )
 	{
-		m_pszDeniedSound = STRING( ALLOC_STRING( data->szValue ) );
+		m_pszDeniedSound = STRING( AllocStringLocal( data->szValue ) );
 		data->fHandled = TRUE;
 	}
 	else if ( FStrEq( data->szKeyName, "CustomStartSound" ) )
 	{
-		m_pszStartSound = STRING( ALLOC_STRING( data->szValue ) );
+		m_pszStartSound = STRING( AllocStringLocal( data->szValue ) );
 		data->fHandled = TRUE;
 	}
 	else if ( FStrEq( data->szKeyName, "CustomLoopSound" ) )
 	{
-		m_pszLoopSound = STRING( ALLOC_STRING( data->szValue ) );
+		m_pszLoopSound = STRING( AllocStringLocal( data->szValue ) );
 		data->fHandled = TRUE;
 	}
 	else
@@ -132,7 +132,7 @@ void CBaseCharger::Use( CBaseEntity *activator, CBaseEntity *caller, USE_TYPE us
 	if ( m_State == STATE_OFF )
 	{
 		m_State = STATE_STARTING;
-		EMIT_SOUND_DYN( edict(), CHAN_ITEM, m_pszStartSound, 1.0f, ATTN_NORM,
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, m_pszStartSound, 1.0f, ATTN_NORM,
 		                0, PITCH_NORM, 0, false, g_vecZero );
 		m_flSoundTime = gpGlobals->time + 0.56f;
 	}
@@ -140,7 +140,7 @@ void CBaseCharger::Use( CBaseEntity *activator, CBaseEntity *caller, USE_TYPE us
 	if ( m_State == STATE_STARTING && m_flSoundTime <= gpGlobals->time )
 	{
 		m_State = STATE_CHARGING;
-		EMIT_SOUND_DYN( edict(), CHAN_STATIC, m_pszLoopSound, 1.0f, ATTN_NORM,
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, m_pszLoopSound, 1.0f, ATTN_NORM,
 		                0, PITCH_NORM, 0, false, g_vecZero );
 	}
 
@@ -156,7 +156,7 @@ void CBaseCharger::Off( void )
 	if ( m_State > STATE_STARTING )
 	{
 		// The stop call selects the start sample on the static channel
-		EMIT_SOUND_DYN( edict(), CHAN_STATIC, m_pszStartSound, 0, 0,
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, m_pszStartSound, 0, 0,
 		                SND_STOP, PITCH_NORM, 0, false, g_vecZero );
 	}
 
@@ -216,7 +216,7 @@ void CBaseCharger::Recharge( bool fromSpawn )
 	{
 		if ( !fromSpawn )
 		{
-			EMIT_SOUND_DYN( edict(), CHAN_ITEM, m_pszStartSound, 1.0f, ATTN_NORM,
+			EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, m_pszStartSound, 1.0f, ATTN_NORM,
 			                0, PITCH_NORM, 0, false, g_vecZero );
 		}
 

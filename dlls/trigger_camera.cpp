@@ -1,5 +1,6 @@
 #include "extdll.h"
 #include "util.h"
+#include "server_support.h"
 #include "portal_trace.h"
 #include "cbase.h"
 #include "player.h"
@@ -192,22 +193,14 @@ bool CameraMouseKey( KeyValueData *data, int actions[3][2], string_t parameters[
 	return true;
 }
 
-void RemoveCameraTarget( CBaseEntity *entity )
+bool CameraClassnameIs( CBaseEntity *entity, const char *classname )
 {
-	CBaseEntity *world = CBaseEntity::Instance( INDEXENT( 0 ) );
+	edict_t *edict = NULL;
 
-	if ( !entity || entity == world )
-		return;
+	if ( entity->pev )
+		edict = entity->edict();
 
-	if ( entity->IsPlayer() )
-	{
-		entity->pev->health = 1;
-		entity->TakeDamage( world->pev, world->pev, 9999, DMG_ALWAYSGIB );
-	}
-	else
-	{
-		UTIL_Remove( entity );
-	}
+	return FClassnameIs( edict, classname );
 }
 
 void ResolveCameraCallback( CBaseEntity *camera, CASFunction *&function, string_t &name,
@@ -711,10 +704,18 @@ void CTriggerCamera::FollowTarget( void )
 
 	pev->nextthink = gpGlobals->time;
 
-	if ( GetCurrentPlayerCount() > 0 )
-		pev->health = 1;
-	else
-		pev->health = 0;
+	pev->health = 0;
+
+	for ( int index = 1; index <= gpGlobals->maxClients; index++ )
+	{
+		CBasePlayer *player = (CBasePlayer *) UTIL_PlayerByIndex( index );
+
+		if ( player && player->m_hCamera == this )
+		{
+			pev->health = 1;
+			break;
+		}
+	}
 
 	Move();
 }
@@ -736,6 +737,7 @@ void CTriggerCamera::Move( void )
 		if ( path->pev->message )
 		{
 			FireTargets( STRING( path->pev->message), this, this, USE_TOGGLE, 0 );
+			path = m_hPath;
 			if ( path->pev->spawnflags & SF_CORNER_FIREONCE )
 				path->pev->message = 0;
 		}
@@ -814,7 +816,7 @@ void CTriggerCamera::MouseClicked( CBasePlayer *player, unsigned int event, unsi
 
 	char description[128];
 
-	sprintf( description, "[trigger_camera] Player #%d %s button %d at %.2f %.2f %.2f",
+	UTIL_FormatString( description, sizeof( description ), "[trigger_camera] Player #%d %s button %d at %.2f %.2f %.2f",
 	         player->entindex(), eventName, button, worldPosition.x, worldPosition.y, worldPosition.z );
 	ALERT( at_aiconsole, "%s: received.\n", description );
 
@@ -926,29 +928,29 @@ void CTriggerCamera::MouseClicked( CBasePlayer *player, unsigned int event, unsi
 				return;
 
 			m_hDraggedEntity = hit;
-			m_flDragDistance = ( trace.m_Steps.front()->m_vecEnd - pev->origin ).Length();
-			m_vecDragEntityOrigin = hit->pev->origin;
-			m_vecDragTraceOrigin = trace.m_Steps.front()->m_vecEnd;
+			m_flDragDistance = ( trace.m_Steps.at( 0 )->m_vecEnd - pev->origin ).Length();
+			m_vecDragEntityOrigin = m_hDraggedEntity->pev->origin;
+			m_vecDragTraceOrigin = trace.m_Steps.at( 0 )->m_vecEnd;
 		}
 		else
 		{
-			Vector dragDirection = ( trace.m_Steps.front()->m_vecEnd - pev->origin ).Normalize();
+			Vector dragDirection = ( trace.m_Steps.at( 0 )->m_vecEnd - pev->origin ).Normalize();
 
-			dragged->pev->origin = pev->origin + dragDirection * m_flDragDistance
+			m_hDraggedEntity->pev->origin = pev->origin + dragDirection * m_flDragDistance
 			                       - m_vecDragTraceOrigin + m_vecDragEntityOrigin;
 		}
 
 		return;
 	}
 
-	if ( hit && FClassnameIs( hit->pev, "trigger_cameratarget" ) )
+	if ( hit && CameraClassnameIs( hit, "trigger_cameratarget" ) )
 	{
 		( (CTriggerCameraTarget *) hit )->MouseClicked( player, event, button, position, worldPosition );
 		return;
 	}
 
 	bool blocked = !hit || ( hit->IsBSPModel() && ( hit->pev->flags & FL_WORLDBRUSH ) )
-	               || FClassnameIs( hit->pev, "worldspawn" );
+	               || CameraClassnameIs( hit, "worldspawn" );
 
 	if ( m_bMouseBlockDrag[button][state] && event == 3 )
 	{
@@ -957,12 +959,11 @@ void CTriggerCamera::MouseClicked( CBasePlayer *player, unsigned int event, unsi
 	}
 
 	int action = m_iMouseActions[button][state];
-	const char *parameter = STRING( m_iszMouseParameters[button][state] );
 
 	if ( action == CAMERA_ACTION_CREATE || action == CAMERA_ACTION_PULL_ENTITY )
 	{
 		Vector zero = g_vecZero;
-		CBaseEntity *entity = action == CAMERA_ACTION_PULL_ENTITY ? UTIL_FindEntityGeneric( parameter, zero, 65536 ) : NULL;
+		CBaseEntity *entity = action == CAMERA_ACTION_PULL_ENTITY ? UTIL_FindEntityGeneric( STRING( m_iszMouseParameters[button][state] ), zero, 65536 ) : NULL;
 
 		if ( action == CAMERA_ACTION_CREATE || entity )
 		{
@@ -976,7 +977,7 @@ void CTriggerCamera::MouseClicked( CBasePlayer *player, unsigned int event, unsi
 					Vector origin = step->m_vecEnd - step->m_vecDirection.Normalize() * 100;
 
 					if ( action == CAMERA_ACTION_CREATE )
-						CBaseEntity::Create( parameter, origin, zero, false, edict() );
+						CBaseEntity::Create( STRING( m_iszMouseParameters[button][state] ), origin, zero, false, edict() );
 					else
 					{
 						entity->pev->origin = origin;
@@ -993,41 +994,41 @@ void CTriggerCamera::MouseClicked( CBasePlayer *player, unsigned int event, unsi
 		float offset = trace.m_Steps.back()->m_flDistance > 10 ? 10 : trace.flFraction * 65536 * 0.5;
 		Vector origin = trace.vecEndPos - trace.m_vecDirection.Normalize() * offset;
 
-		ExplosionCreate( origin, g_vecZero, player->edict(), (int) atof( parameter ), TRUE );
+		ExplosionCreate( origin, g_vecZero, player->edict(), (int) atof( STRING( m_iszMouseParameters[button][state] ) ), TRUE );
 	}
 
 	if ( blocked || !hit )
 		return;
 
-	switch ( action )
+	switch ( m_iMouseActions[button][state] )
 	{
 		case CAMERA_ACTION_USE_OFF:
-			hit->Use( player, this, USE_OFF, atof( parameter ) );
+			hit->Use( player, this, USE_OFF, atof( STRING( m_iszMouseParameters[button][state] ) ) );
 			break;
 		case CAMERA_ACTION_USE_ON:
-			hit->Use( player, this, USE_ON, atof( parameter ) );
+			hit->Use( player, this, USE_ON, atof( STRING( m_iszMouseParameters[button][state] ) ) );
 			break;
 		case CAMERA_ACTION_USE_TOGGLE:
-			hit->Use( player, this, USE_TOGGLE, atof( parameter ) );
+			hit->Use( player, this, USE_TOGGLE, atof( STRING( m_iszMouseParameters[button][state] ) ) );
 			break;
 		case CAMERA_ACTION_REMOVE:
-			RemoveCameraTarget( hit );
+			UTIL_Remove( hit );
 			break;
 		case CAMERA_ACTION_DAMAGE:
-			hit->TakeDamage( pev, player->pev, atof( parameter ), DMG_GENERIC );
+			hit->TakeDamage( pev, player->pev, atof( STRING( m_iszMouseParameters[button][state] ) ), DMG_GENERIC );
 			break;
 		case CAMERA_ACTION_HEAL:
-			hit->TakeHealth( atof( parameter ), DMG_MEDKITHEAL, 0 );
+			hit->TakeHealth( atof( STRING( m_iszMouseParameters[button][state] ) ), DMG_MEDKITHEAL, 0 );
 			break;
 		case CAMERA_ACTION_MOVE_TARGET:
 		{
 			Vector origin = g_vecZero;
-			CBaseEntity *destination = UTIL_FindEntityGeneric( parameter, origin, 65536 );
+			CBaseEntity *destination = UTIL_FindEntityGeneric( STRING( m_iszMouseParameters[button][state] ), origin, 65536 );
 
 			if ( destination )
 				origin = destination->pev->origin;
 			else
-				ParseCameraFloats( &origin.x, 3, parameter, ' ' );
+				ParseCameraFloats( &origin.x, 3, STRING( m_iszMouseParameters[button][state] ), ' ' );
 
 			hit->pev->origin = origin;
 			hit->pev->velocity = g_vecZero;
@@ -1107,27 +1108,25 @@ void CTriggerCameraTarget::MouseClicked( CBasePlayer *player, int event, int but
 	}
 
 	int action = m_iMouseActions[button][state];
-	const char *target = STRING( m_iszMouseTargets[button][state] );
-	const char *parameter = STRING( m_iszMouseParameters[button][state] );
 
 	if ( action >= CAMERA_ACTION_USE_OFF && action <= CAMERA_ACTION_USE_TOGGLE )
 	{
 		USE_TYPE type = action == CAMERA_ACTION_USE_OFF ? USE_OFF : action == CAMERA_ACTION_USE_ON ? USE_ON : USE_TOGGLE;
 
-		FireTargets( target, player, this, type, atof( parameter ) );
+		FireTargets( STRING( m_iszMouseTargets[button][state] ), player, this, type, atof( STRING( m_iszMouseParameters[button][state] ) ) );
 	}
 	else if ( action >= CAMERA_ACTION_REMOVE && action <= CAMERA_ACTION_HEAL )
 	{
 		CBaseEntity *entity = NULL;
 
-		while ( ( entity = UTIL_FindEntityByTargetname( entity, target ) ) != NULL )
+		while ( ( entity = UTIL_FindEntityByTargetname( entity, STRING( m_iszMouseTargets[button][state] ) ) ) != NULL )
 		{
 			if ( action == CAMERA_ACTION_REMOVE )
-				RemoveCameraTarget( entity );
+				UTIL_Remove( entity );
 			else if ( action == CAMERA_ACTION_DAMAGE )
-				entity->TakeDamage( pev, player->pev, atof( parameter ), DMG_GENERIC );
+				entity->TakeDamage( pev, player->pev, atof( STRING( m_iszMouseParameters[button][state] ) ), DMG_GENERIC );
 			else
-				entity->TakeHealth( atof( parameter ), DMG_MEDKITHEAL, 0 );
+				entity->TakeHealth( atof( STRING( m_iszMouseParameters[button][state] ) ), DMG_MEDKITHEAL, 0 );
 		}
 	}
 
@@ -1165,7 +1164,11 @@ bool HandleCameraCommand( CBasePlayer *player, const char *command )
 	if ( FStrEq( command, "cam_key" ) )
 	{
 		if ( player->m_hCamera && CMD_ARGC() > 2 )
-			player->m_hCamera->KeyInput( player, atoi( CMD_ARGV( 1 ) ), atoi( CMD_ARGV( 2 ) ), NULL );
+		{
+			int down = atoi( CMD_ARGV( 1 ) );
+			int keynum = atoi( CMD_ARGV( 2 ) );
+			player->m_hCamera->KeyInput( player, down, keynum, NULL );
+		}
 
 		return true;
 	}

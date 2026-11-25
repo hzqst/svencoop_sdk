@@ -61,7 +61,7 @@ void CHealthKit :: Spawn( void )
 	const char *model = SetupModel() ? STRING( pev->model )
 	    : ( CClassicMode::GetInstance()->IsEnabled() ? "models/hlclassic/w_medkit.mdl" : "models/w_medkit.mdl" );
 
-	SET_MODEL( edict(), model );
+	SET_MODEL( ENT( pev ), model );
 	Item_SetDefaultSize( pev, Vector( -11.9f, -11.9f, 0 ), Vector( 11.9f, 11.9f, 7.9f ) );
 
 	CItem::Spawn();
@@ -92,11 +92,11 @@ BOOL CHealthKit::MyTouch( CBasePlayer *pPlayer )
 
 	if ( pPlayer->TakeHealth( amount, DMG_GENERIC, m_iHealthCap ) )
 	{
-		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
+		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, ENT( pPlayer->pev ) );
 			WRITE_STRING( STRING(pev->classname) );
 		MESSAGE_END();
 
-		EMIT_SOUND( edict(), CHAN_ITEM, "items/smallmedkit1.wav", 1, ATTN_NORM);
+		EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/smallmedkit1.wav", 1, ATTN_NORM);
 
 		if ( g_pGameRules->ItemShouldRespawn( this ) )
 		{
@@ -136,7 +136,7 @@ bool CFuncHealthCharger::ChargeDenied( CBasePlayer *player )
 	if ( m_flSoundTime <= gpGlobals->time )
 	{
 		m_flSoundTime = gpGlobals->time + 0.62f;
-		EMIT_SOUND_DYN( edict(), CHAN_ITEM, m_pszDeniedSound, 1.0f, ATTN_NORM,
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, m_pszDeniedSound, 1.0f, ATTN_NORM,
 		                0, PITCH_NORM, 0, false, g_vecZero );
 	}
 

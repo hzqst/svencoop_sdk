@@ -56,7 +56,7 @@ void CPortal::Spawn( void )
 	{
 		pev->movetype = MOVETYPE_NOCLIP;
 		pev->solid = SOLID_TRIGGER;
-		SetTouch( NULL );
+		SetTouch( &CPortal::Touch );
 	}
 
 	if ( FClassnameIs( pev, "func_portal" ) )
@@ -266,10 +266,10 @@ void CPortal::SendClientUpdate( void )
 		m_ClientUpdates[handle] = epoch;
 		MESSAGE_BEGIN( MSG_ONE, gmsgPortalUpdate, NULL, player->edict() );
 		WRITE_LONG( entindex() );
-		WRITE_BYTE( m_bActive );
 
 		if ( m_bActive )
 		{
+			WRITE_BYTE( 1 );
 			WRITE_COORD( pev->origin.x );
 			WRITE_COORD( pev->origin.y );
 			WRITE_COORD( pev->origin.z );
@@ -295,18 +295,26 @@ void CPortal::SendClientUpdate( void )
 
 			if ( m_iPortalMode != PORTAL_MIRROR )
 			{
-				WRITE_BYTE( source != NULL );
-
 				if ( source )
 				{
+					WRITE_BYTE( 1 );
+					source = m_hSource;
 					WRITE_LONG( source->entindex() );
+					source = m_hSource;
 					WRITE_COORD( source->pev->origin.x );
+					source = m_hSource;
 					WRITE_COORD( source->pev->origin.y );
+					source = m_hSource;
 					WRITE_COORD( source->pev->origin.z );
+					source = m_hSource;
 					WRITE_ANGLE( source->pev->angles.x );
+					source = m_hSource;
 					WRITE_ANGLE( source->pev->angles.y );
+					source = m_hSource;
 					WRITE_ANGLE( source->pev->angles.z );
 				}
+				else
+					WRITE_BYTE( 0 );
 			}
 
 			if ( m_iPortalMode == PORTAL_MONITOR )
@@ -321,7 +329,7 @@ void CPortal::SendClientUpdate( void )
 					WRITE_LONG( m_uiHeight );
 				}
 			}
-			else if ( m_iPortalMode == PORTAL_PORTAL )
+			if ( m_iPortalMode == PORTAL_PORTAL )
 			{
 				WRITE_BYTE( ( pev->spawnflags & SF_PORTAL_NO_PLANES ) != 0 );
 				WRITE_BYTE( ( pev->spawnflags & SF_PORTAL_SHOOT_THROUGH ) != 0 );
@@ -330,6 +338,8 @@ void CPortal::SendClientUpdate( void )
 			if ( m_iTextureMode == PORTAL_TEXTURE_NAMED )
 				WRITE_STRING( STRING( m_iszTextureName ) );
 		}
+		else
+			WRITE_BYTE( 0 );
 
 		MESSAGE_END();
 	}

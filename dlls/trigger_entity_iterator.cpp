@@ -25,23 +25,12 @@ void IteratorSetHandle( EHANDLE &handle, CBaseEntity *entity )
 bool IteratorEntityValid( CBaseEntity *entity )
 {
 	return entity && entity->pev && entity->pev->pContainingEntity &&
-	       !entity->pev->pContainingEntity->free && ENTINDEX( entity->pev->pContainingEntity ) != 0;
+	       !entity->pev->pContainingEntity->free && !FNullEnt( entity->pev->pContainingEntity );
 }
 
 bool IteratorPlayerConnected( CBaseEntity *entity )
 {
 	return !FClassnameIs( entity->pev, "player" ) || ( (CBasePlayer *) entity )->IsConnected();
-}
-
-CBaseEntity *IteratorFindEntity( CBaseEntity *start, const char *field, const char *value )
-{
-	edict_t *previous = start && start->pev ? start->pev->pContainingEntity : NULL;
-	edict_t *entity = FIND_ENTITY_BY_STRING( previous, field, value );
-
-	if ( !entity || entity->free || ENTINDEX( entity ) == 0 )
-		return NULL;
-
-	return (CBaseEntity *) GET_PRIVATE( entity );
 }
 
 LINK_ENTITY_TO_CLASS( trigger_entity_iterator, CTriggerEntityIterator );
@@ -289,8 +278,8 @@ CBaseEntity *CTriggerEntityIterator::FindNext( bool useName, bool useClassname )
 {
 	for (;;)
 	{
-		m_pSearchCursor = IteratorFindEntity( m_pSearchCursor, useName ? "targetname" : "classname",
-		                                    useName ? NameFilter() : ClassnameFilter() );
+		m_pSearchCursor = UTIL_FindEntityByString( m_pSearchCursor, useName ? "targetname" : "classname",
+		                                         useName ? NameFilter() : ClassnameFilter() );
 
 		if ( !m_pSearchCursor || !useName || !useClassname ||
 		     FStrEq( ClassnameFilter(), STRING( m_pSearchCursor->pev->classname ) ) )
@@ -408,7 +397,7 @@ void CTriggerEntityIterator::ProcessIteration( void )
 
 	if ( !IteratorEntityValid( target ) || !FStrEq( STRING( target->pev->targetname ), STRING( pev->target ) ) )
 	{
-		IteratorSetHandle( m_hTarget, IteratorFindEntity( NULL, "targetname", STRING( pev->target ) ) );
+		IteratorSetHandle( m_hTarget, UTIL_FindEntityByString( NULL, "targetname", STRING( pev->target ) ) );
 		target = IteratorHandleEntity( m_hTarget );
 	}
 

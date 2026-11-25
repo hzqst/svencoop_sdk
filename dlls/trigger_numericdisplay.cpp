@@ -17,12 +17,6 @@ enum
 	SF_NUMERICDISPLAY_EMPTY_ZERO = 8,
 	NUMERICDISPLAY_EFFECTS = 0x300
 };
-
-bool NumericDisplayEntityValid( CBaseEntity *entity )
-{
-	return entity && entity->pev && entity->pev->pContainingEntity &&
-	       !entity->pev->pContainingEntity->free && !FNullEnt( entity->pev->pContainingEntity );
-}
 }
 
 LINK_ENTITY_TO_CLASS( trigger_numericdisplay, CTriggerNumericDisplay );
@@ -78,7 +72,7 @@ int CTriggerNumericDisplay::GetUpdatedValue( void )
 
 	CBaseEntity *source = UTIL_FindEntityByTargetname( NULL, STRING( pev->target ) );
 
-	if ( !NumericDisplayEntityValid( source ) )
+	if ( !source )
 		return 0;
 
 	void *field = NULL;
@@ -259,7 +253,11 @@ void CTriggerNumericDisplay::FindDigits( void )
 			EntityList_t *entry = new EntityList_t;
 
 			entry->entity = EHANDLE();
-			entry->entity = entity;
+			edict_t *edict = entity->edict();
+
+			if ( edict && !edict->free )
+				entry->entity.Set( edict );
+
 			entry->next = entities;
 			entities = entry;
 		}

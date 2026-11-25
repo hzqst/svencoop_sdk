@@ -154,20 +154,22 @@ CWriteFileSystemToFile::CWriteFileSystemToFile(CKeyvaluesWriter &writer, bool wr
 {
 }
 
-bool CWriteFileSystemToFile::Write(const CASVirtualFileSystem &fileSystem)
+bool CWriteFileSystemToFile::Write(void)
 {
 	if (!m_pWriter->m_hFile)
 		return false;
 
 	m_pWriter->BeginBlock("FileSystem");
 
-	if (fileSystem.m_pRoot)
+	const CASDirectory *root = CASServerManager::GetInstance()->m_pFileSystem->m_pRoot;
+
+	if (root)
 	{
 		char path[CASDirectory::MAX_NAME_LENGTH];
 		unsigned int level = 0;
 
 		path[0] = 0;
-		EnumerateDirectories( *this, level, fileSystem.m_pRoot, path, path, sizeof( path ) );
+		EnumerateDirectories( *this, level, root, path, path, sizeof( path ) );
 
 		while (m_uiLevel)
 		{
@@ -175,6 +177,8 @@ bool CWriteFileSystemToFile::Write(const CASVirtualFileSystem &fileSystem)
 			m_pWriter->EndBlock();
 		}
 	}
+
+	const CASVirtualFileSystem &fileSystem = *CASServerManager::GetInstance()->m_pFileSystem;
 
 	if (!fileSystem.m_Extensions.empty())
 	{
@@ -206,26 +210,29 @@ void CWriteFileSystemToFile::operator()( unsigned int level, const CASDirectory 
 
 	if (m_bWriteDetails)
 	{
+		unsigned char accessFlags = directory->m_uiAccessFlags;
+		unsigned char directoryFlags = directory->m_uiDirectoryFlags;
+
 		ModuleTypesToKeyvaluesBlock(*m_pWriter, directory->m_uiModuleTypes);
 
-		if (directory->m_uiAccessFlags)
+		if (accessFlags)
 		{
 			m_pWriter->BeginBlock("access");
 
 			for (unsigned int access = FileAccess::READ; access <= FileAccess::WRITE; access++)
 			{
-				if (directory->m_uiAccessFlags & (1 << access))
+				if (accessFlags & (1 << access))
 					m_pWriter->WriteKeyvalue("access", FileAccessToString((FileAccess::Type)access));
 			}
 
 			m_pWriter->EndBlock();
 		}
 
-		if (directory->m_uiDirectoryFlags)
+		if (directoryFlags)
 		{
 			m_pWriter->BeginBlock("flags");
 
-			if (directory->m_uiDirectoryFlags & DirectoryFlagBit::IMPLICIT_SUBDIRECTORIES)
+			if (directoryFlags & DirectoryFlagBit::IMPLICIT_SUBDIRECTORIES)
 				m_pWriter->WriteKeyvalue("flag", DirectoryFlagToString(DirectoryFlag::IMPLICIT_SUBDIRECTORIES));
 
 			m_pWriter->EndBlock();

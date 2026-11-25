@@ -576,7 +576,7 @@ void CSurvivalEndVote::Release( void ) const
 
 void toggle_survival_mode_Callback( const CCommand &command )
 {
-	CSurvivalMode::GetInstance()->Toggle();
+	CSurvivalMode::GetInstance()->VoteToggle();
 }
 
 CConCommand toggle_survival_mode( "toggle_survival_mode", toggle_survival_mode_Callback, ConCommandFlag::AdminOnly, "Toggles Survival Mode" );

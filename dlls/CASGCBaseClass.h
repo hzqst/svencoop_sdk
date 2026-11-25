@@ -20,6 +20,7 @@ protected:
 	CASGCBaseClass() : m_bGCFlag(false) {}
 
 private:
+	friend class CASBaseConCommand;
 	friend class CASTextMenu;
 	friend class CASVote;
 

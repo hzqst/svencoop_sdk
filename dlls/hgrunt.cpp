@@ -519,6 +519,8 @@ BOOL CHGrunt :: CheckRangeAttack1 ( float flDot, float flDist )
 	return TRUE;
 		}
 
+extern cvar_t sk_hgrunt_gspeed;
+
 //=========================================================
 // CheckRangeAttack2 - this checks the Grunt's grenade
 // attack. 
@@ -579,7 +581,7 @@ BOOL CHGrunt :: CheckRangeAttack2 ( float flDot, float flDist )
 
 		// estimate position
 		if (HasConditions( bits_COND_SEE_ENEMY))
-			vecTarget = vecTarget + ((vecTarget - pev->origin).Length() / gSkillData.hgruntGrenadeSpeed) * m_hEnemy->pev->velocity;
+			vecTarget = vecTarget + ((vecTarget - pev->origin).Length() / sk_hgrunt_gspeed.value) * m_hEnemy->pev->velocity;
 	}
 
 	// are any of my squad members near the intended grenade impact area? Launched grenades
@@ -597,7 +599,7 @@ BOOL CHGrunt :: CheckRangeAttack2 ( float flDot, float flDist )
 	if (FBitSet( pev->weapons, HGRUNT_HANDGRENADE))
 		vecToss = VecCheckToss( pev, GetGunPosition(), vecTarget, 1.0 );
 	else
-		vecToss = VecCheckThrow( pev, GetGunPosition(), vecTarget, gSkillData.hgruntGrenadeSpeed, 0.7 );
+		vecToss = VecCheckThrow( pev, GetGunPosition(), vecTarget, sk_hgrunt_gspeed.value, 0.7 );
 
 	if ( vecToss != g_vecZero )
 	{

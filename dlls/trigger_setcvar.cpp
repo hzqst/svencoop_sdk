@@ -34,7 +34,7 @@ void CTriggerSetCVar::KeyValue( KeyValueData *pkvd )
 		m_iszNewValue = AllocStringLocal( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
-	else if ( FStrEq( pkvd->szKeyName, "SetType" ) )
+	else if ( !stricmp( pkvd->szKeyName, "SetType" ) )
 	{
 		m_setType = (CCVarSystem::SetType_t) atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;

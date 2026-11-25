@@ -16,7 +16,7 @@ CInventoryRules::CInventoryRules( CBaseEntity *owner )
 {
 	m_hEntity = NULL;
 
-	if ( owner )
+	if ( owner && owner->pev )
 	{
 		edict_t *edict = owner->pev->pContainingEntity;
 
@@ -186,6 +186,8 @@ bool CInventoryRules::CanUseTrigger( CBaseEntity *pActivator, bool fContinueByDe
 		return !fContinueByDefault;
 
 	CBaseMonster *holder = pActivator->IsMonster() ? (CBaseMonster *) pActivator : NULL;
+
+	BOOL isPlayer = pActivator->IsPlayer();
 
 	if ( !holder )
 		return !fContinueByDefault;

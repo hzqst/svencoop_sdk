@@ -144,26 +144,38 @@ void CFuncWallToggle :: Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 class CFuncConveyor : public CFuncWall
 {
 public:
+	CFuncConveyor() : m_vecSavedAngles( 0, 0, 0 ) {}
+
 	void OnSetOriginByMap( void )
 	{
 		if ( pev->spawnflags & SF_CONVEYOR_NOTSOLID )
 			return;
 
-		Vector vecAngles = pev->angles;
+		m_vecSavedAngles = pev->angles;
 
 		SetMovedir( pev );
-		pev->angles = vecAngles;
+		pev->angles = m_vecSavedAngles;
 	}
 
 	void	Spawn( void );
 	void	Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void	UpdateSpeed( float speed );
+
+private:
+	Vector m_vecSavedAngles;
 };
 
 LINK_ENTITY_TO_CLASS( func_conveyor, CFuncConveyor );
 void CFuncConveyor :: Spawn( void )
 {
-	SetMovedir( pev );
+	if ( pev->spawnflags & SF_CONVEYOR_NOTSOLID )
+		SetMovedir( pev );
+	else
+	{
+		m_vecSavedAngles = pev->angles;
+		SetMovedir( pev );
+		pev->angles = m_vecSavedAngles;
+	}
 	CFuncWall::Spawn();
 
 	if ( !(pev->spawnflags & SF_CONVEYOR_VISUAL) )

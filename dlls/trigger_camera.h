@@ -52,7 +52,7 @@ private:
 	int          m_iMaxPlayerCount;
 	string_t     m_iszMaxPlayerTarget;
 
-	EHANDLE      m_hDraggedEntity;
+	CEntityHandle<CBaseEntity> m_hDraggedEntity;
 	Vector       m_vecDragEntityOrigin;
 	Vector       m_vecDragTraceOrigin;
 	float        m_flDragDistance;
@@ -63,8 +63,8 @@ private:
 	string_t     m_iszCursorSprite;
 	bool         m_bCopiedPlayerModel;
 
-	EHANDLE      m_hTarget;
-	EHANDLE      m_hPath;
+	CEntityHandle<CBaseEntity> m_hTarget;
+	CEntityHandle<CBaseEntity> m_hPath;
 	string_t     m_sPath;
 	float        m_flWait;
 	float        m_flReturnTime;

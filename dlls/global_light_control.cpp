@@ -34,7 +34,10 @@ void CGlobalLightControl::Spawn( void )
 	if ( !pev->targetname )
 	{
 		Use( NULL, NULL, USE_TOGGLE, 0 );
-		REMOVE_ENTITY( edict() );
+		edict_t *entity = NULL;
+		if ( pev )
+			entity = pev->pContainingEntity;
+		REMOVE_ENTITY( entity );
 	}
 }
 

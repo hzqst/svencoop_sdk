@@ -43,7 +43,7 @@ CBaseEntity *ConditionHandleEntity( EHANDLE &handle )
 bool ConditionEntityValid( CBaseEntity *entity )
 {
 	return entity && entity->pev && entity->pev->pContainingEntity
-		&& !entity->pev->pContainingEntity->free && ENTINDEX( entity->pev->pContainingEntity ) != 0;
+		&& !entity->pev->pContainingEntity->free && !FNullEnt( entity->pev->pContainingEntity );
 }
 
 void ConditionSetHandle( EHANDLE &handle, CBaseEntity *entity )
@@ -57,7 +57,7 @@ void ConditionSetHandle( EHANDLE &handle, CBaseEntity *entity )
 CBaseEntity *ConditionEdictEntity( edict_t *entity )
 {
 	if ( !entity )
-		entity = INDEXENT( 0 );
+		entity = ENT( 0 );
 
 	if ( !entity || entity->free )
 		return NULL;
@@ -303,24 +303,24 @@ void CTriggerCondition::CheckValue( void )
 	if ( pev->nextthink > gpGlobals->time )
 		return;
 
-	CBaseEntity *target = ConditionHandleEntity( m_hTarget );
+	bool checkTarget = ConditionEntityValid( ConditionHandleEntity( m_hTarget ) );
 
-	if ( !ConditionEntityValid( target )
-		|| ( !m_bSpecialTarget && !FStrEq( STRING( target->pev->targetname ), STRING( pev->targetname ) ) ) )
+	if ( !checkTarget || ( !m_bSpecialTarget && ConditionEntityValid( ConditionHandleEntity( m_hTarget ) )
+		&& !FStrEq( STRING( ConditionHandleEntity( m_hTarget )->pev->targetname ), STRING( pev->targetname ) ) ) )
 	{
-		target = UTIL_FindEntityByTargetname( NULL, STRING( pev->target ) );
-		ConditionSetHandle( m_hTarget, target );
+		ConditionSetHandle( m_hTarget, UTIL_FindEntityByTargetname( NULL, STRING( pev->target ) ) );
+		checkTarget = ConditionEntityValid( ConditionHandleEntity( m_hTarget ) );
 	}
 
-	if ( ConditionEntityValid( ConditionHandleEntity( m_hTarget ) ) )
+	if ( checkTarget )
 	{
 		m_bUseSource = m_iszSourceName != 0;
 
 		if ( m_bUseSource )
 		{
-			CBaseEntity *source = ConditionHandleEntity( m_hSource );
-
-			if ( !ConditionEntityValid( source ) || !FStrEq( STRING( source->pev->targetname ), STRING( m_iszSourceName ) ) )
+			if ( !ConditionEntityValid( ConditionHandleEntity( m_hSource ) )
+				|| ( ConditionEntityValid( ConditionHandleEntity( m_hSource ) )
+				&& !FStrEq( STRING( ConditionHandleEntity( m_hSource )->pev->targetname ), STRING( m_iszSourceName ) ) ) )
 			{
 				if ( FStrEq( STRING( m_iszSourceName ), "!activator" ) )
 					m_hSource = m_hActivator;
@@ -330,9 +330,7 @@ void CTriggerCondition::CheckValue( void )
 					ConditionSetHandle( m_hSource, UTIL_FindEntityByTargetname( NULL, STRING( m_iszSourceName ) ) );
 			}
 
-			source = ConditionHandleEntity( m_hSource );
-
-			if ( !ConditionEntityValid( source ) )
+			if ( !ConditionEntityValid( ConditionHandleEntity( m_hSource ) ) )
 			{
 				ALERT( at_console, "Trigger_condition \"%s\": Lost sight of or could not find source entity \"%s\". Ceasing action.\n",
 				       STRING( pev->targetname ), STRING( m_iszSourceName ) );
@@ -345,7 +343,7 @@ void CTriggerCondition::CheckValue( void )
 
 			int index;
 
-			m_SourceType = source->GetEntvar( STRING( m_iszSourceKey ), &m_pSourceValue, index );
+			m_SourceType = ConditionHandleEntity( m_hSource )->GetEntvar( STRING( m_iszSourceKey ), &m_pSourceValue, index );
 
 			if ( m_SourceType == VAR_INVALID )
 				m_bUseSource = false;
@@ -385,12 +383,12 @@ void CTriggerCondition::CheckValue( void )
 				return;
 			}
 
-			target = ConditionHandleEntity( m_hTarget );
+			CBaseEntity *target = ConditionHandleEntity( m_hTarget );
 
 			Vector eye = target->pev->origin + target->pev->view_ofs;
 			Vector forward;
 
-			UTIL_MakeVectorsPrivate( target->pev->angles, forward, NULL, NULL );
+			AngleVectors( target->pev->angles, &forward, NULL, NULL );
 
 			Vector delta = point - eye;
 			float dot = forward.y * delta.y + forward.x * delta.x;
@@ -410,9 +408,11 @@ void CTriggerCondition::CheckValue( void )
 				if ( result )
 				{
 					TraceResult trace;
+					target = ConditionHandleEntity( m_hTarget );
 
 					TRACE_LINE( eye, eye + forward, 257, target->edict(), &trace );
-					result = trace.flFraction == 1.0f || ( lookEntity && trace.pHit == lookEntity->edict() );
+					result = trace.flFraction == 1.0f
+						|| ( lookEntity && trace.pHit == ( lookEntity->edict() ) );
 				}
 			}
 			else
@@ -597,7 +597,9 @@ void CTriggerCondition::CheckFloat( void )
 	else
 		right = (float) atof( STRING( m_iszCheckValue ) );
 
-	if ( (unsigned int) m_iCheckType > CONDITION_BIT_AND )
+	const int operation = m_iCheckType;
+
+	if ( (unsigned int) operation > CONDITION_BIT_AND )
 	{
 		ALERT( at_console, "Trigger_condition \"%s\": Unknown compare-operation for VAR_FLOAT keyvalue \"%s\" \"%f\".\n",
 		       STRING( pev->targetname ), STRING( m_iszValueName ), *(float *) m_pValue );
@@ -607,8 +609,8 @@ void CTriggerCondition::CheckFloat( void )
 	}
 
 	ALERT( at_aiconsole, "Trigger_condition \"%s\": Value %.6f %s %.6f%s", STRING( pev->targetname ),
-	       left, g_ConditionOperations[m_iCheckType], right, m_iCheckType == CONDITION_BIT_AND ? " not zero?" : "?" );
-	Result( ConditionCompare( left, right, m_iCheckType ) );
+	       left, g_ConditionOperations[operation], right, operation == CONDITION_BIT_AND ? " not zero?" : "?" );
+	Result( ConditionCompare( left, right, operation ) );
 }
 
 void CTriggerCondition::CheckInteger( void )
@@ -637,7 +639,7 @@ void CTriggerCondition::CheckInteger( void )
 				right = *(int *) m_pSourceValue;
 				break;
 			default:
-				ALERT( at_console, "Trigger_condition \"%s\": Cannot compare VAR_INTEGER keyvalue \"%s\" to the %s keyvalue \"%s\".\n",
+				ALERT( at_console, "Trigger_condition \"%s\": Cannot compare the VAR_INTEGER keyvalue \"%s\" to the %s keyvalue \"%s\".\n",
 				       STRING( pev->targetname ), STRING( m_iszValueName ), EntVarStr( m_SourceType ), STRING( m_iszSourceKey ) );
 				SetThink( NULL );
 				UTIL_Remove( this );
@@ -662,7 +664,9 @@ void CTriggerCondition::CheckInteger( void )
 			right = atoi( text );
 	}
 
-	if ( (unsigned int) m_iCheckType > CONDITION_BIT_AND )
+	const int operation = m_iCheckType;
+
+	if ( (unsigned int) operation > CONDITION_BIT_AND )
 	{
 		ALERT( at_console, "Trigger_condition \"%s\": Unknown compare-operation for VAR_INTEGER keyvalue \"%s\" \"%i\".\n",
 		       STRING( pev->targetname ), STRING( m_iszValueName ), *(int *) m_pValue );
@@ -672,8 +676,8 @@ void CTriggerCondition::CheckInteger( void )
 	}
 
 	ALERT( at_aiconsole, "Trigger_condition \"%s\": Value %i %s %i%s", STRING( pev->targetname ),
-	       left, g_ConditionOperations[m_iCheckType], right, m_iCheckType == CONDITION_BIT_AND ? " not zero?" : "?" );
-	Result( ConditionCompare( left, right, m_iCheckType ) );
+	       left, g_ConditionOperations[operation], right, operation == CONDITION_BIT_AND ? " not zero?" : "?" );
+	Result( ConditionCompare( left, right, operation ) );
 }
 
 void CTriggerCondition::CheckString( void )
@@ -711,15 +715,20 @@ void CTriggerCondition::CheckString( void )
 
 				if ( entity )
 					right = STRING( entity->pev->targetname );
-				else if ( m_iCheckType == CONDITION_EQUAL || m_iCheckType == CONDITION_NOT_EQUAL )
-				{
-					ALERT( at_aiconsole, "Trigger_condition \"%s\": String \"%s\" %s null-string?",
-					       STRING( pev->targetname ), left, g_ConditionOperations[m_iCheckType] );
-					Result( m_iCheckType == CONDITION_NOT_EQUAL );
-					return;
-				}
 				else
+				{
+					const int operation = m_iCheckType;
+
+					if ( operation == CONDITION_EQUAL || operation == CONDITION_NOT_EQUAL )
+					{
+						ALERT( at_aiconsole, "Trigger_condition \"%s\": String \"%s\" %s null-string?",
+						       STRING( pev->targetname ), left, g_ConditionOperations[operation] );
+						Result( operation == CONDITION_NOT_EQUAL );
+						return;
+					}
+
 					right = "";
+				}
 
 				break;
 			}
@@ -732,11 +741,13 @@ void CTriggerCondition::CheckString( void )
 		}
 	}
 
-	if ( m_iCheckType == CONDITION_EQUAL || m_iCheckType == CONDITION_NOT_EQUAL )
+	const int operation = m_iCheckType;
+
+	if ( operation == CONDITION_EQUAL || operation == CONDITION_NOT_EQUAL )
 	{
 		ALERT( at_aiconsole, "Trigger_condition \"%s\": String \"%s\" %s \"%s\"?", STRING( pev->targetname ),
-		       left, g_ConditionOperations[m_iCheckType], right );
-		Result( m_iCheckType == CONDITION_EQUAL ? strcmp( left, right ) == 0 : strcmp( left, right ) != 0 );
+		       left, g_ConditionOperations[operation], right );
+		Result( operation == CONDITION_EQUAL ? strcmp( left, right ) == 0 : strcmp( left, right ) != 0 );
 		return;
 	}
 
@@ -769,13 +780,15 @@ void CTriggerCondition::CheckEdict( void )
 		return;
 	}
 
-	if ( m_iCheckType == CONDITION_EQUAL || m_iCheckType == CONDITION_NOT_EQUAL )
+	const int operation = m_iCheckType;
+
+	if ( operation == CONDITION_EQUAL || operation == CONDITION_NOT_EQUAL )
 	{
 		ALERT( at_aiconsole, "Trigger_condition \"%s\": %s \"%s\" %s entity as %s \"%s\"?", STRING( pev->targetname ),
 		       left ? STRING( left->pev->classname ) : "Invalid entity", left ? STRING( left->pev->targetname ) : "",
-		       m_iCheckType == CONDITION_EQUAL ? "is them same" : "is not them same",
+		       operation == CONDITION_EQUAL ? "is them same" : "is not them same",
 		       right ? STRING( right->pev->classname ) : "invalid entity", right ? STRING( right->pev->targetname ) : "" );
-		Result( m_iCheckType == CONDITION_EQUAL ? left == right : left != right );
+		Result( operation == CONDITION_EQUAL ? left == right : left != right );
 		return;
 	}
 
@@ -837,30 +850,32 @@ void CTriggerCondition::CheckVector( void )
 	else
 		UTIL_StringToVector( right, STRING( m_iszCheckValue ) );
 
+	const int operation = m_iCheckType;
+
 	if ( scalarComparison )
 	{
 		Vector left = *(Vector *) m_pValue;
 		float length = MakeVecLength( &left );
 
-		if ( (unsigned int) m_iCheckType <= CONDITION_BIT_AND )
+		if ( (unsigned int) operation <= CONDITION_BIT_AND )
 		{
 			ALERT( at_aiconsole, "Trigger_condition \"%s\": Length of %.2f %.2f %.2f (%.2f) %s %.2f%s", STRING( pev->targetname ),
-			       left.x, left.y, left.z, length, g_ConditionOperations[m_iCheckType], scalar, m_iCheckType == CONDITION_BIT_AND ? " is non-zero?" : "?" );
-			Result( ConditionCompare( length, scalar, m_iCheckType ) );
+			       left.x, left.y, left.z, length, g_ConditionOperations[operation], scalar, operation == CONDITION_BIT_AND ? " is non-zero?" : "?" );
+			Result( ConditionCompare( length, scalar, operation ) );
 			return;
 		}
 	}
-	else if ( m_iCheckType == CONDITION_EQUAL || m_iCheckType == CONDITION_NOT_EQUAL || m_iCheckType == CONDITION_BIT_AND )
+	else if ( operation == CONDITION_EQUAL || operation == CONDITION_NOT_EQUAL || operation == CONDITION_BIT_AND )
 	{
 		Vector left = *(Vector *) m_pValue;
 
 		for ( int i = 0; i < 3; i++ )
 		{
 			if ( pev->spawnflags & GetByteCondition( i ) )
-				left[i] = m_iCheckType == CONDITION_EQUAL ? right[i] : (float) ( (double) right[i] + 1.0 );
+				left[i] = operation == CONDITION_EQUAL ? right[i] : (float) ( (double) right[i] + 1.0 );
 		}
 
-		if ( m_iCheckType == CONDITION_BIT_AND )
+		if ( operation == CONDITION_BIT_AND )
 		{
 			ALERT( at_aiconsole, "Trigger_condition \"%s\": %.2f %.2f %.2f bit-wise AND with %.2f %.2f %.2f is not zero?",
 			       STRING( pev->targetname ), left.x, left.y, left.z, right.x, right.y, right.z );
@@ -870,10 +885,10 @@ void CTriggerCondition::CheckVector( void )
 		else
 		{
 			ALERT( at_aiconsole, "Trigger_condition \"%s\": %.2f %.2f %.2f %s %.2f %.2f %.2f?",
-			       STRING( pev->targetname ), left.x, left.y, left.z, g_ConditionOperations[m_iCheckType], right.x, right.y, right.z );
+			       STRING( pev->targetname ), left.x, left.y, left.z, g_ConditionOperations[operation], right.x, right.y, right.z );
 			bool equal = left.x == right.x && left.y == right.y && left.z == right.z;
 
-			Result( m_iCheckType == CONDITION_EQUAL ? equal : !equal );
+			Result( operation == CONDITION_EQUAL ? equal : !equal );
 		}
 
 		return;
@@ -960,24 +975,26 @@ void CTriggerCondition::CheckBytes( int count )
 		strncat( rightText, text, count * 3 - strlen( rightText ) - 1 );
 	}
 
-	if ( (unsigned int) m_iCheckType <= CONDITION_BIT_AND )
+	const int operation = m_iCheckType;
+
+	if ( (unsigned int) operation <= CONDITION_BIT_AND )
 	{
 		int matches = 0;
 
 		for ( int i = 0; i < count; i++ )
 		{
-			if ( ConditionCompare( (int) left[i], (int) right[i], m_iCheckType ) )
+			if ( ConditionCompare( (int) left[i], (int) right[i], operation ) )
 				matches++;
 		}
 
-		if ( m_iCheckType == CONDITION_BIT_AND )
+		if ( operation == CONDITION_BIT_AND )
 			ALERT( at_aiconsole, "Trigger_condition \"%s\": Byte-array %s byte-wise AND with %s leaves all %i bytes non-zero?",
 			       STRING( pev->targetname ), leftText, rightText, count );
 		else
 			ALERT( at_aiconsole, "Trigger_condition \"%s\": Byte-array %s %s%s %s?", STRING( pev->targetname ),
-			       leftText, m_iCheckType >= CONDITION_LESS ? "byte-wise " : "", g_ConditionOperations[m_iCheckType], rightText );
+			       leftText, operation >= CONDITION_LESS ? "byte-wise " : "", g_ConditionOperations[operation], rightText );
 
-		Result( m_iCheckType == CONDITION_NOT_EQUAL ? matches != 0 : matches == count );
+		Result( operation == CONDITION_NOT_EQUAL ? matches != 0 : matches == count );
 	}
 	else
 	{

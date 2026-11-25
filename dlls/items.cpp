@@ -323,7 +323,7 @@ class CItemSuit : public CItem
 		const char *model = SetupModel() ? STRING( pev->model )
 		    : ( CClassicMode::GetInstance()->IsEnabled() ? "models/hlclassic/w_suit.mdl" : "models/w_suit.mdl" );
 
-		SET_MODEL( edict(), model );
+		SET_MODEL( ENT( pev ), model );
 		Item_SetDefaultSize( pev, Vector( -14.9f, -14.9f, 0 ), Vector( 14.9f, 14.9f, 63.9f ) );
 		CItem::Spawn( );
 	}
@@ -376,7 +376,7 @@ public:
 		const char *model = SetupModel() ? STRING( pev->model )
 		    : ( CClassicMode::GetInstance()->IsEnabled() ? "models/hlclassic/w_battery.mdl" : "models/w_battery.mdl" );
 
-		SET_MODEL( edict(), model );
+		SET_MODEL( ENT( pev ), model );
 		Item_SetDefaultSize( pev, Vector( -7.9f, -7.9f, 0 ), Vector( 7.9f, 7.9f, 15.9f ) );
 		CItem::Spawn( );
 	}
@@ -402,11 +402,11 @@ public:
 			int pct;
 			char szcharge[64];
 
-			MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
+			MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, ENT( pPlayer->pev ) );
 				WRITE_STRING( STRING(pev->classname) );
 			MESSAGE_END();
 
-			EMIT_SOUND( edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
+			EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 
 			if ( g_pGameRules->ItemShouldRespawn( this ) )
 				Respawn();
@@ -444,7 +444,7 @@ class CItemHelmet : public CItemBattery
 
 		const char *model = SetupModel() ? STRING( pev->model ) : "models/barney_helmet.mdl";
 
-		SET_MODEL( edict(), model );
+		SET_MODEL( ENT( pev ), model );
 		Item_SetDefaultSize( pev, Vector( -7.9f, -7.9f, 0 ), Vector( 7.9f, 7.9f, 19.9f ) );
 		CItem::Spawn();
 	}
@@ -470,7 +470,7 @@ class CItemArmorVest : public CItemBattery
 
 		const char *model = SetupModel() ? STRING( pev->model ) : "models/barney_vest.mdl";
 
-		SET_MODEL( edict(), model );
+		SET_MODEL( ENT( pev ), model );
 		Item_SetDefaultSize( pev, Vector( -10.9f, -10.9f, 0 ), Vector( 10.9f, 10.9f, 35.9f ) );
 		CItem::Spawn();
 	}

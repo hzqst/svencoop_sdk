@@ -507,7 +507,8 @@ int DispatchSpawn( edict_t *pent )
 			if ( custom && !custom->OnScriptClassReady() )
 			{
 				CASLog::GetInstance()->Error( AS_LOG_DEFAULT,
-					"Custom entity(%s): initialization failed, destroying entity\n", STRING( pEntity->pev->classname ) );
+					"Custom entity(%s): initialization failed, destroying entity\n",
+					pEntity->pev ? STRING( pEntity->pev->classname ) : "" );
 				return -1;
 			}
 		}
@@ -548,7 +549,7 @@ void DispatchKeyValue( edict_t *pentKeyvalue, KeyValueData *pkvd )
 
 	// If the key was an entity variable, or there's no class set yet, don't look for the object, it may
 	// not exist yet.
-	if ( pkvd->fHandled || pkvd->szClassName == NULL )
+	if ( pkvd->fHandled || pkvd->szClassName == NULL || pentKeyvalue->free )
 		return;
 
 	// Get the actualy entity object
@@ -569,8 +570,8 @@ void DispatchTouch( edict_t *pentTouched, edict_t *pentOther )
 	if ( gTouchDisabled )
 		return;
 
-	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pentTouched);
-	CBaseEntity *pOther = (CBaseEntity *)GET_PRIVATE( pentOther );
+	CBaseEntity *pEntity = ( pentTouched && !pentTouched->free ) ? (CBaseEntity *) GET_PRIVATE( pentTouched ) : NULL;
+	CBaseEntity *pOther = ( pentOther && !pentOther->free ) ? (CBaseEntity *) GET_PRIVATE( pentOther ) : NULL;
 
 	if ( pEntity && pOther && ! ((pEntity->pev->flags | pOther->pev->flags) & FL_KILLME) )
 		pEntity->Touch( pOther );
@@ -579,8 +580,8 @@ void DispatchTouch( edict_t *pentTouched, edict_t *pentOther )
 
 void DispatchUse( edict_t *pentUsed, edict_t *pentOther )
 {
-	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pentUsed);
-	CBaseEntity *pOther = (CBaseEntity *)GET_PRIVATE(pentOther);
+	CBaseEntity *pEntity = ( pentUsed && !pentUsed->free ) ? (CBaseEntity *) GET_PRIVATE( pentUsed ) : NULL;
+	CBaseEntity *pOther = ( pentOther && !pentOther->free ) ? (CBaseEntity *) GET_PRIVATE( pentOther ) : NULL;
 
 	if (pEntity && !(pEntity->pev->flags & FL_KILLME) )
 		pEntity->Use( pOther, pOther, USE_TOGGLE, 0 );
@@ -588,7 +589,7 @@ void DispatchUse( edict_t *pentUsed, edict_t *pentOther )
 
 void DispatchThink( edict_t *pent )
 {
-	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pent);
+	CBaseEntity *pEntity = ( pent && !pent->free ) ? (CBaseEntity *) GET_PRIVATE( pent ) : NULL;
 	if (pEntity)
 	{
 		if ( FBitSet( pEntity->pev->flags, FL_DORMANT ) )
@@ -600,8 +601,8 @@ void DispatchThink( edict_t *pent )
 
 void DispatchBlocked( edict_t *pentBlocked, edict_t *pentOther )
 {
-	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE( pentBlocked );
-	CBaseEntity *pOther = (CBaseEntity *)GET_PRIVATE( pentOther );
+	CBaseEntity *pEntity = ( pentBlocked && !pentBlocked->free ) ? (CBaseEntity *) GET_PRIVATE( pentBlocked ) : NULL;
+	CBaseEntity *pOther = ( pentOther && !pentOther->free ) ? (CBaseEntity *) GET_PRIVATE( pentOther ) : NULL;
 
 	if (pEntity)
 		pEntity->Blocked( pOther );
@@ -826,7 +827,7 @@ int DispatchRestore( edict_t *pent, SAVERESTOREDATA *pSaveData, int globalEntity
 
 void DispatchObjectCollsionBox( edict_t *pent )
 {
-	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pent);
+	CBaseEntity *pEntity = ( pent && !pent->free ) ? (CBaseEntity *) GET_PRIVATE( pent ) : NULL;
 	if (pEntity)
 	{
 		pEntity->SetObjectCollisionBox();
@@ -903,28 +904,33 @@ CBaseEntity * EHANDLE :: operator -> ()
 // Negative amounts cause damage
 bool CBaseEntity :: TakeHealth( float flHealth, int bitsDamageType, int health_cap )
 {
-	if (!pev->takedamage && !IsPlayer() )
+	if ( !pev->takedamage && !IsPlayer() )
 		return false;
 
 	if ( !IsAlive() )
 		return false;
 
-	float flCap = pev->max_health;
-
 	if ( flHealth >= 0 )
 	{
 		if ( health_cap )
-			flCap = health_cap;
+		{
+			float flCap = health_cap;
 
-// heal
-	if ( pev->health >= flCap )
+			if ( pev->health >= flCap )
+				return false;
+
+			pev->health = V_min( pev->health + flHealth, flCap );
+			return true;
+		}
+
+		if ( pev->health >= pev->max_health )
 			return false;
 	}
 
 	pev->health += flHealth;
 
-	if (pev->health > flCap )
-		pev->health = flCap;
+	if ( pev->health > pev->max_health )
+		pev->health = pev->max_health;
 
 	if ( (int) pev->health <= 0 )
 		Killed( pev, GIB_NORMAL );
@@ -946,6 +952,9 @@ bool CBaseEntity :: TakeArmor( float flArmor, int bitsDamageType, int armor_cap 
 
 		if ( pev->armorvalue >= flCap )
 			return false;
+
+		pev->armorvalue = V_min( pev->armorvalue + flArmor, flCap );
+		return true;
 	}
 	else if ( flArmor >= 0 && pev->armorvalue >= flCap )
 	{
@@ -1013,7 +1022,7 @@ bool CBaseEntity :: IsPointEnt( void )
 bool CBaseEntity::FVisibleFromPos( const Vector &start, const Vector &end )
 {
 	TraceResult trace;
-	edict_t *entity = pev ? ENT( pev ) : NULL;
+	edict_t *entity = ENT( pev );
 
 	trace.vecEndPos = Vector( 0.0f, 0.0f, 0.0f );
 	trace.vecPlaneNormal = Vector( 0.0f, 0.0f, 0.0f );
@@ -1119,49 +1128,79 @@ bool CBaseEntity :: BlockedByEntity( CBaseEntity *pOther, float flDamage )
 
 int CBaseEntity :: TakeDamage( entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType )
 {
-	Vector			vecTemp;
-
-	if (!pev->takedamage)
+	if ( !pev->takedamage )
 		return 0;
 
-	// UNDONE: some entity types may be immune or resistant to some bitsDamageType
-	
-	// if Attacker == Inflictor, the attack was a melee or other instant-hit attack.
-	// (that is, no actual entity projectile was involved in the attack so use the shooter's origin). 
-	if ( pevAttacker == pevInflictor )	
+	CBaseEntity *pAttacker = DamagePointsEntity( pevAttacker );
+
+	if ( pAttacker && pAttacker->IsMonster() )
+		flDamage *= pAttacker->MyMonsterPointer()->m_flEffectDamage;
+
+	if ( IsMonster() )
 	{
-		vecTemp = pevInflictor->origin - ( VecBModelOrigin(pev) );
+		switch ( Classify() )
+		{
+		case CLASS_HUMAN_PASSIVE:
+		case CLASS_PLAYER_ALLY:
+		case CLASS_TEAM1:
+		case CLASS_TEAM2:
+		case CLASS_TEAM3:
+		case CLASS_TEAM4:
+			if ( !pevAttacker || MyMonsterPointer()->CheckAttacker( DamagePointsEntity( pevAttacker ) ) )
+				return 0;
+			break;
+		default:
+			break;
+		}
 	}
-	else
-	// an actual missile was involved.
+
+	GetDamagePoints( pevAttacker, pevInflictor, flDamage );
+
+	g_vecAttackDir = ( pevInflictor->origin - VecBModelOrigin( pev ) ).Normalize();
+
+	edict_t *pInflictorEdict = pevInflictor ? ENT( pevInflictor ) : NULL;
+
+	if ( pInflictorEdict && !pInflictorEdict->free && !FNullEnt( pInflictorEdict )
+		&& ( pev->movetype == MOVETYPE_WALK || pev->movetype == MOVETYPE_STEP )
+		&& pevAttacker->solid != SOLID_TRIGGER )
 	{
-		vecTemp = pevInflictor->origin - ( VecBModelOrigin(pev) );
-	}
-
-// this global is still used for glass and other non-monster killables, along with decals.
-	g_vecAttackDir = vecTemp.Normalize();
-		
-// save damage based on the target's armor level
-
-// figure momentum add (don't let hurt brushes or other triggers move player)
-	if ((!FNullEnt(pevInflictor)) && (pev->movetype == MOVETYPE_WALK || pev->movetype == MOVETYPE_STEP) && (pevAttacker->solid != SOLID_TRIGGER) )
-	{
-		Vector vecDir = pev->origin - (pevInflictor->absmin + pevInflictor->absmax) * 0.5;
-		vecDir = vecDir.Normalize();
-
+		Vector vecDir = ( pev->origin - ( pevInflictor->absmin + pevInflictor->absmax ) * 0.5 ).Normalize();
 		float flForce = flDamage * ((32 * 32 * 72.0) / (pev->size.x * pev->size.y * pev->size.z)) * 5;
-		
-		if (flForce > 1000.0) 
+
+		if ( flForce > 1000.0 )
 			flForce = 1000.0;
+
 		pev->velocity = pev->velocity + vecDir * flForce;
 	}
 
-// do the damage
 	pev->health -= flDamage;
-	if (pev->health <= 0)
+
+	if ( pev->health <= 0 )
 	{
 		Killed( pevAttacker, GIB_NORMAL );
 		return 0;
+	}
+
+	CBaseEntity *pEntities[256];
+	int count = FindMonstersInWorld( pEntities, 256, FL_MONSTER );
+
+	for ( int i = 0; i < count; i++ )
+	{
+		if ( !pEntities[i] )
+			continue;
+
+		CBaseMonster *pMonster = (CBaseMonster *) pEntities[i];
+
+		if ( pMonster->MyMonsterPointer()->IRelationship( this, false ) > R_NO )
+			continue;
+
+		pAttacker = DamagePointsEntity( pevAttacker );
+
+		if ( ENT( (CBaseEntity *) pMonster->m_hEnemy != NULL ) == ( ENT( pev ) ) )
+		{
+			Vector vecEnemyCenter = pAttacker->Center();
+			pMonster->PushEnemy( pAttacker, vecEnemyCenter );
+		}
 	}
 
 	return 1;
@@ -1181,7 +1220,7 @@ CBaseEntity *CBaseEntity::GetNextTarget( void )
 	if ( FStringNull( pev->target ) )
 		return NULL;
 	edict_t *pTarget = FIND_ENTITY_BY_TARGETNAME ( NULL, STRING(pev->target) );
-	if ( FNullEnt(pTarget) )
+	if ( !pTarget || pTarget->free || FNullEnt( pTarget ) )
 		return NULL;
 
 	return Instance( pTarget );
@@ -1222,7 +1261,7 @@ int CBaseEntity::Restore( CRestore &restore )
 		maxs = pev->maxs;
 
 
-		PRECACHE_MODEL( (char *)STRING(pev->model) );
+		PrecacheModel_Intercept( this, STRING( pev->model ) );
 		SET_MODEL(ENT(pev), STRING(pev->model));
 		UTIL_SetSize(pev, mins, maxs);	// Reset them
 	}
@@ -1261,13 +1300,6 @@ void SetObjectCollisionBox( entvars_t *pev )
 		pev->absmin = pev->origin + pev->mins;
 		pev->absmax = pev->origin + pev->maxs;
 	}
-
-	pev->absmin.x -= 1;
-	pev->absmin.y -= 1;
-	pev->absmin.z -= 1;
-	pev->absmax.x += 1;
-	pev->absmax.y += 1;
-	pev->absmax.z += 1;
 }
 
 
@@ -1316,25 +1348,18 @@ void CBaseEntity :: MakeDormant( void )
 
 int CBaseEntity :: IsDormant( void )
 {
-	return FBitSet( pev->flags, FL_DORMANT );
+	return FBitSet( pev->flags, FL_DORMANT ) != 0;
 }
 
 BOOL CBaseEntity :: IsInWorld( void )
 {
 	// position 
-	if (pev->origin.x >= 4096) return FALSE;
-	if (pev->origin.y >= 4096) return FALSE;
-	if (pev->origin.z >= 4096) return FALSE;
-	if (pev->origin.x <= -4096) return FALSE;
-	if (pev->origin.y <= -4096) return FALSE;
-	if (pev->origin.z <= -4096) return FALSE;
-	// speed
-	if (pev->velocity.x >= 2000) return FALSE;
-	if (pev->velocity.y >= 2000) return FALSE;
-	if (pev->velocity.z >= 2000) return FALSE;
-	if (pev->velocity.x <= -2000) return FALSE;
-	if (pev->velocity.y <= -2000) return FALSE;
-	if (pev->velocity.z <= -2000) return FALSE;
+	if (!(pev->origin.x < 65536)) return FALSE;
+	if (!(pev->origin.y < 65536)) return FALSE;
+	if (!(pev->origin.z < 65536)) return FALSE;
+	if (!(pev->origin.x > -65536)) return FALSE;
+	if (!(pev->origin.y > -65536)) return FALSE;
+	if (!(pev->origin.z > -65536)) return FALSE;
 
 	return TRUE;
 }
@@ -1369,10 +1394,13 @@ int	CBaseEntity :: DamageDecal( int bitsDamageType )
 CBaseEntity * CBaseEntity::Create( const char *szName, const Vector &vecOrigin, const Vector &vecAngles, bool fCreateAndDontSpawn, edict_t *pentOwner )
 {
 	if ( !szName || !szName[0] )
+	{
+		ALERT( at_console, "CBaseEntity::Create: Empty entity name!\n" );
 		return NULL;
+	}
 
-	edict_t *pent = CREATE_NAMED_ENTITY( MAKE_STRING( szName ));
-	if ( FNullEnt( pent ) || !GET_PRIVATE( pent ) )
+	edict_t *pent = CREATE_NAMED_ENTITY( MAKE_STRING( szName ) );
+	if ( !pent || pent->free || FNullEnt( pent ) )
 	{
 		ALERT ( at_console, "CBaseEntity::Create: Couldn't create entity \"%s\"!\n", szName );
 		return NULL;

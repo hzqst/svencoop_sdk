@@ -25,6 +25,7 @@ typedef unsigned char byte;
 #include "eiface.h"
 
 #include "studio.h"
+#include "ModelUtils.h"
 
 #ifndef ACTIVITY_H
 #include "activity.h"
@@ -314,6 +315,9 @@ int GetSequenceEventFrame( void *pmodel, int sequence, int eventNumber )
 		return -1;
 
 	mstudioseqdesc_t *pseqdesc = (mstudioseqdesc_t *) ( (byte *) pstudiohdr + pstudiohdr->seqindex ) + sequence;
+	if ( !pseqdesc )
+		return -1;
+
 	mstudioevent_t *pevent = (mstudioevent_t *) ( (byte *) pstudiohdr + pseqdesc->eventindex );
 
 	for ( int i = 0; i < pseqdesc->numevents; i++ )
@@ -330,7 +334,7 @@ int GetAnimationEvent( void *pmodel, entvars_t *pev, MonsterEvent_t *pMonsterEve
 	studiohdr_t *pstudiohdr;
 	
 	pstudiohdr = (studiohdr_t *)pmodel;
-	if ( !pstudiohdr || pev->sequence >= pstudiohdr->numseq || !pMonsterEvent )
+	if ( !pstudiohdr || pev->sequence >= pstudiohdr->numseq || pev->sequence == -1 || !pMonsterEvent )
 		return 0;
 
 	int events = 0;
@@ -339,6 +343,53 @@ int GetAnimationEvent( void *pmodel, entvars_t *pev, MonsterEvent_t *pMonsterEve
 	mstudioevent_t		*pevent;
 
 	pseqdesc = (mstudioseqdesc_t *)((byte *)pstudiohdr + pstudiohdr->seqindex) + (int)pev->sequence;
+	pevent = (mstudioevent_t *)((byte *)pstudiohdr + pseqdesc->eventindex);
+
+	if (pseqdesc->numevents == 0 || index > pseqdesc->numevents )
+		return 0;
+
+	if (pseqdesc->numframes > 1)
+	{
+		flStart *= (pseqdesc->numframes - 1) / 256.0;
+		flEnd *= (pseqdesc->numframes - 1) / 256.0;
+	}
+	else
+	{
+		flStart = 0;
+		flEnd = 1.0;
+	}
+
+	if ( !pevent )
+		return 0;
+
+	for (; index < pseqdesc->numevents; index++)
+	{
+		if ( pevent[index].event >= EVENT_CLIENT )
+			continue;
+
+		if ( (pevent[index].frame >= flStart && pevent[index].frame < flEnd) ||
+			((pseqdesc->flags & STUDIO_LOOPING) && flEnd >= pseqdesc->numframes - 1 && pevent[index].frame < flEnd - pseqdesc->numframes + 1) )
+		{
+			pMonsterEvent->event = pevent[index].event;
+			pMonsterEvent->options = pevent[index].options;
+			return index + 1;
+		}
+	}
+	return 0;
+}
+
+int GetGaitAnimationEvent( void *pmodel, entvars_t *pev, MonsterEvent_t *pMonsterEvent, float flStart, float flEnd, int index )
+{
+	studiohdr_t *pstudiohdr;
+
+	pstudiohdr = (studiohdr_t *)pmodel;
+	if ( !pstudiohdr || pev->gaitsequence >= pstudiohdr->numseq || !pMonsterEvent )
+		return 0;
+
+	mstudioseqdesc_t	*pseqdesc;
+	mstudioevent_t		*pevent;
+
+	pseqdesc = (mstudioseqdesc_t *)((byte *)pstudiohdr + pstudiohdr->seqindex) + (int)pev->gaitsequence;
 	pevent = (mstudioevent_t *)((byte *)pstudiohdr + pseqdesc->eventindex);
 
 	if (pseqdesc->numevents == 0 || index > pseqdesc->numevents )
@@ -374,6 +425,12 @@ int GetAnimationEvent( void *pmodel, entvars_t *pev, MonsterEvent_t *pMonsterEve
 
 float SetController( void *pmodel, entvars_t *pev, int iController, float flValue )
 {
+	if ( iController < 0 || iController > 3 )
+	{
+		ALERT( at_console, "Controller is %d", iController );
+		return 0.0;
+	}
+
 	studiohdr_t *pstudiohdr;
 	int i;
 	
@@ -540,43 +597,16 @@ int FindTransition( void *pmodel, int iEndingAnim, int iGoalAnim, int *piDir )
 
 void SetBodygroup( void *pmodel, entvars_t *pev, int iGroup, int iValue )
 {
-	studiohdr_t *pstudiohdr;
-	
-	pstudiohdr = (studiohdr_t *)pmodel;
-	if (! pstudiohdr)
-		return;
-
-	if (iGroup > pstudiohdr->numbodyparts)
-		return;
-
-	mstudiobodyparts_t *pbodypart = (mstudiobodyparts_t *)((byte *)pstudiohdr + pstudiohdr->bodypartindex) + iGroup;
-
-	if (iValue >= pbodypart->nummodels)
-		return;
-
-	int iCurrent = (pev->body / pbodypart->base) % pbodypart->nummodels;
-
-	pev->body = (pev->body - (iCurrent * pbodypart->base) + (iValue * pbodypart->base));
+	pev->body = SetBodygroupInt( pmodel, pev->body, iGroup, iValue );
 }
 
 
 int GetBodygroup( void *pmodel, entvars_t *pev, int iGroup )
 {
-	studiohdr_t *pstudiohdr;
-	
-	pstudiohdr = (studiohdr_t *)pmodel;
-	if (! pstudiohdr)
-		return 0;
+	return GetBodygroupInt( pmodel, pev->body, iGroup );
+}
 
-	if (iGroup > pstudiohdr->numbodyparts)
-		return 0;
-
-	mstudiobodyparts_t *pbodypart = (mstudiobodyparts_t *)((byte *)pstudiohdr + pstudiohdr->bodypartindex) + iGroup;
-
-	if (pbodypart->nummodels <= 1)
-		return 0;
-
-	int iCurrent = (pev->body / pbodypart->base) % pbodypart->nummodels;
-
-	return iCurrent;
+int GetBodygroupSubmodelCount( void *pmodel, entvars_t *pev, int iGroup )
+{
+	return GetBodygroupSubmodelCountInt( pmodel, iGroup );
 }

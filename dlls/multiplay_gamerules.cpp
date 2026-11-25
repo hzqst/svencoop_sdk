@@ -33,11 +33,13 @@
 #include "CASHook.h"
 #include "scripted.h"
 #include "CServer.h"
+#include "CCVarSystem.h"
 #include "server_commands.h"
 #include "CVoteManager.h"
 #include "maprules.h"
 #include "server_filesystem.h"
 #include "user_messages.h"
+#include "func_vehicle.h"
 
 #include	"monsters.h"
 #include	"game.h"
@@ -73,6 +75,7 @@ extern int g_teamplay;
 #define AMMO_RESPAWN_TIME	20
 
 int CountPlayers( void );
+void ClassFileParser( void );
 
 float g_flIntermissionStartTime = 0;
 
@@ -111,7 +114,9 @@ CHalfLifeMultiplay :: CHalfLifeMultiplay()
 
 	g_VoiceGameMgr.Init(&g_GameMgrHelper, gpGlobals->maxClients);
 
-	m_flIntermissionEndTime = 0;
+	CVAR_SET_STRING( "sv_notransition", "" );
+	CVAR_SET_STRING( "mp_nextmap", "" );
+	SvenForceRespawn = false;
 	g_flIntermissionStartTime = 0;
 
 	// 11/8/98
@@ -154,9 +159,7 @@ CHalfLifeMultiplay :: CHalfLifeMultiplay()
 			ALERT( at_warning, "Administrative contact is not set for this server. Please insert contact details (such as an email address, URL, or Discord) in the \"sv_contact\" CVAR for your server.\n" );
 	}
 
-	CVoteManager &votes = CServer::GetInstance()->GetVoteManager();
-
-	votes.FreeMapVoteList();
+	CServer::GetInstance()->GetVoteManager().FreeMapVoteList();
 
 	const char *mapVoteConfig = CVAR_GET_STRING( "mapvotecfgfile" );
 
@@ -169,7 +172,7 @@ CHalfLifeMultiplay :: CHalfLifeMultiplay()
 		SERVER_COMMAND( command );
 		SERVER_EXECUTE();
 
-		int mapCount = votes.CountMapsInVoteList();
+		int mapCount = CServer::GetInstance()->GetVoteManager().CountMapsInVoteList();
 
 		ALERT( at_console, "%d map(s) loaded into the vote list.\n", mapCount );
 
@@ -182,9 +185,7 @@ CHalfLifeMultiplay :: CHalfLifeMultiplay()
 
 	CASServerManager::GetInstance()->OnMapBegin();
 
-	CMap *map = CMap::GetInstance();
-
-	map->LoadGlobalConfigFile();
+	CMap::GetInstance()->LoadGlobalConfigFile();
 
 	edict_t *world = INDEXENT( 0 );
 
@@ -196,19 +197,17 @@ CHalfLifeMultiplay :: CHalfLifeMultiplay()
 		CVAR_SET_FLOAT( "sv_zmax", range );
 	}
 
-	map->LoadMapConfigFile();
+	CMap::GetInstance()->LoadMapConfigFile();
 
 	g_iSkillLevel = SKILL_MEDIUM;
-	map->LoadGlobalSkillFile();
-	map->LoadMapSkillFile();
-
-	// Materialize the skill cache from the flat cvars
-	CGameRules::RefreshSkillData();
-	g_iSkillLevel = SKILL_MEDIUM;
-	gSkillData.iSkillLevel = SKILL_MEDIUM;
+	CMap::GetInstance()->LoadGlobalSkillFile();
+	CMap::GetInstance()->LoadMapSkillFile();
 
 	GetNextMap();
-	RefreshSkillData();
+	ClassFileParser();
+
+	m_flIntermissionEndTime = 0;
+	m_flNextBodyqueHideTime = gpGlobals->time + BODYQUE_HIDE_DELAY;
 
 	g_pAdminList = NULL;
 	LoadServerAdmins();
@@ -217,12 +216,12 @@ CHalfLifeMultiplay :: CHalfLifeMultiplay()
 
 	if ( IS_DEDICATED_SERVER() )
 	{
-		float emptyTime = CVAR_GET_FLOAT( "mp_timelimit_empty" );
+		float emptyTime = mp_timelimit_empty.value;
 
 		if ( emptyTime != 0.0f )
 		{
 			UTIL_LogPrintf( "Server is empty, map will end in %.2f minute(s) if nobody connects.\n", emptyTime );
-			m_flEmptyServerTime = emptyTime;
+			m_flEmptyServerTime = 0;
 		}
 	}
 }
@@ -319,7 +318,7 @@ bool CHalfLifeMultiplay::ShouldCollide( edict_t *touched, edict_t *other )
 
 		if ( !trace.fStartSolid && trace.flFraction == 1.0f )
 		{
-			Vector2D direction( probe.x - other->v.origin.x, probe.y - other->v.origin.y );
+			Vector2D direction( monster->pev->origin.x + offsets[index].x - other->v.origin.x, monster->pev->origin.y + offsets[index].y - other->v.origin.y );
 
 			push = direction.Normalize() * 64.0f;
 			break;
@@ -464,30 +463,26 @@ void CHalfLifeMultiplay::ClientUserInfoChanged( CBasePlayer *player, char *infob
 	}
 	else
 	{
-		CMap *map = CMap::GetInstance();
-
-		if ( map->HasForcedPlayerModels() )
+		if ( CMap::GetInstance()->HasForcedPlayerModels() )
 		{
-			for ( unsigned int index = 0; index < map->m_uiForcedPlayerModels; ++index )
+			for ( unsigned int index = 0; index < CMap::GetInstance()->m_uiForcedPlayerModels; ++index )
 			{
-				if ( !stricmp( requestedModel, map->GetForcedPlayerModel( index ) ) )
+				if ( !stricmp( requestedModel, CMap::GetInstance()->GetForcedPlayerModel( index ) ) )
 					return;
 			}
 
 			g_engfuncs.pfnSetClientKeyValue( clientIndex, infobuffer, (char *) "cl_model", requestedModel );
 
-			int chosen = RANDOM_LONG( 0, (int) map->m_uiForcedPlayerModels - 1 );
+			int chosen = RANDOM_LONG( 0, (int) CMap::GetInstance()->m_uiForcedPlayerModels - 1 );
 
-			g_engfuncs.pfnSetClientKeyValue( clientIndex, infobuffer, (char *) "model", (char *) map->GetForcedPlayerModel( chosen ) );
-
-			const char *list = STRING( map->m_iszForcedPlayerModels );
+			g_engfuncs.pfnSetClientKeyValue( clientIndex, infobuffer, (char *) "model", (char *) CMap::GetInstance()->GetForcedPlayerModel( chosen ) );
 			char message[256];
 
-			if ( strlen( list ) < 180 )
+			if ( strlen( STRING( CMap::GetInstance()->m_iszForcedPlayerModels ) ) < 180 )
 			{
 				UTIL_CopyString( message, "* On this map, player models are restricted to:\n", sizeof( message ) );
 				UTIL_SayText( message, player );
-				sprintf( message, "* %s\n", list );
+				sprintf( message, "* %s\n", STRING( CMap::GetInstance()->m_iszForcedPlayerModels ) );
 				UTIL_SayText( message, player );
 			}
 			else
@@ -807,9 +802,7 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerI
 	if ( !pWeapon->CanDeploy() || pPlayer->GetWeaponsBlocked() )
 		return FALSE;
 
-	CBasePlayerItem *activeItem = pPlayer->m_pActiveItem;
-
-	if ( !activeItem )
+	if ( !pPlayer->m_pActiveItem )
 		return TRUE;
 
 	if ( pPlayer->IsExclusiveHoldItemActive() )
@@ -818,7 +811,7 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerI
 	if ( pWeapon->m_bExclusiveHold )
 		return TRUE;
 
-	if ( !activeItem->CanHolster() )
+	if ( !pPlayer->m_pActiveItem->CanHolster() )
 		return FALSE;
 
 	if ( pPlayer->m_iWeaponAutoSwitch <= 0 )
@@ -833,7 +826,7 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerI
 		return TRUE;
 	}
 
-	return pWeapon->iWeight() > activeItem->iWeight();
+	return pWeapon->iWeight() > pPlayer->m_pActiveItem->iWeight();
 }
 
 bool CHalfLifeMultiplay :: GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerItem *pCurrentWeapon )
@@ -1147,7 +1140,10 @@ void CHalfLifeMultiplay :: PlayerSpawn( CBasePlayer *pPlayer )
 //=========================================================
 BOOL CHalfLifeMultiplay :: FPlayerCanRespawn( CBasePlayer *pPlayer )
 {
-	return TRUE;
+	bool canRespawn = true;
+
+	g_PlayerCanRespawnHook.Call( 0, pPlayer, &canRespawn );
+	return canRespawn;
 }
 
 //=========================================================
@@ -1172,59 +1168,60 @@ int CHalfLifeMultiplay :: IPointsForKill( CBasePlayer *pAttacker, CBasePlayer *p
 }
 
 
+static CBaseEntity *GetPlayerDeathKiller( entvars_t *pKiller )
+{
+	edict_t *pKillerEdict = pKiller ? pKiller->pContainingEntity : NULL;
+	if ( !pKillerEdict )
+		pKillerEdict = ENT( 0 );
+
+	return pKillerEdict && !pKillerEdict->free ? CBaseEntity::Instance( pKillerEdict ) : NULL;
+}
+
 //=========================================================
 // PlayerKilled - someone/something killed this player
 //=========================================================
 void CHalfLifeMultiplay :: PlayerKilled( CBasePlayer *pVictim, entvars_t *pKiller, entvars_t *pInflictor )
 {
-	DeathNotice( pVictim, pKiller, pInflictor );
+	if ( !pVictim )
+		return;
 
-	pVictim->m_iDeaths += 1;
-
-
-	FireTargets( "game_playerdie", pVictim, pVictim, USE_TOGGLE, 0 );
-	CBasePlayer *peKiller = NULL;
-	CBaseEntity *ktmp = CBaseEntity::Instance( pKiller );
-	if ( ktmp && (ktmp->Classify() == CLASS_PLAYER) )
-		peKiller = (CBasePlayer*)ktmp;
-
-	if ( pVictim->pev == pKiller )  
-	{  // killed self
-		pKiller->frags -= 1;
-	}
-	else if ( ktmp && ktmp->IsPlayer() )
+	if ( pVictim->pev == pKiller )
 	{
-		// if a player dies in a deathmatch game and the killer is a client, award the killer some points
-		pKiller->frags += IPointsForKill( peKiller, pVictim );
-		
-		FireTargets( "game_playerkill", ktmp, ktmp, USE_TOGGLE, 0 );
+		pKiller->frags -= 1;
+		++pVictim->m_iDeaths;
 	}
 	else
-	{  // killed by the world
-		pKiller->frags -= 1;
+	{
+		CBaseEntity *pKillerEntity = GetPlayerDeathKiller( pKiller );
+		if ( pKillerEntity && pKillerEntity->Classify() == CLASS_VEHICLE )
+		{
+			CFuncVehicle *pVehicle = dynamic_cast<CFuncVehicle *>( pKillerEntity );
+			CBasePlayer *pDriver = pVehicle ? pVehicle->GetDriver() : NULL;
+			if ( pDriver )
+			{
+				pKillerEntity = pDriver;
+				pKiller = pDriver->pev;
+			}
+		}
+
+		if ( pKillerEntity && pKillerEntity->IsPlayer() )
+		{
+			CBasePlayer *pPlayer = static_cast<CBasePlayer *>( pKillerEntity );
+			int points = IPointsForKill( pPlayer, pVictim );
+			pPlayer->pev->frags += points;
+			pPlayer->SendScoreInfo( NULL );
+			FireTargets( "game_playerkill", pPlayer, pPlayer, USE_TOGGLE, 0 );
+		}
+		else
+		{
+			pKiller->frags += 1;
+			++pVictim->m_iDeaths;
+		}
 	}
 
-	// update the scores
-	// killed scores
 	pVictim->SendScoreInfo( NULL );
-
-	// killers score, if it's a player
-	CBaseEntity *ep = CBaseEntity::Instance( pKiller );
-	if ( ep && ep->Classify() == CLASS_PLAYER )
-	{
-		CBasePlayer *PK = (CBasePlayer*)ep;
-
-		PK->SendScoreInfo( NULL );
-
-		// let the killer paint another decal as soon as he'd like.
-		PK->m_flNextDecalTime = gpGlobals->time;
-	}
-#ifndef HLDEMO_BUILD
-	if ( pVictim->HasNamedPlayerItem("weapon_satchel") )
-	{
-		DeactivateSatchels( pVictim );
-	}
-#endif
+	DeathNotice( pVictim, pKiller, pInflictor );
+	FireTargets( "game_playerdie", pVictim, pVictim, USE_TOGGLE, 0 );
 }
 
 //=========================================================
@@ -1232,41 +1229,52 @@ void CHalfLifeMultiplay :: PlayerKilled( CBasePlayer *pVictim, entvars_t *pKille
 //=========================================================
 void CHalfLifeMultiplay::DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, entvars_t *pevInflictor )
 {
-	// Work out what killed the player, and send a message to all clients about it
-	CBaseEntity *Killer = CBaseEntity::Instance( pKiller );
-
-	const char *killer_weapon_name = "world";		// by default, the player is killed by the world
-	int killer_index = 0;
-	
-	// Hack to fix name change
-	const char *tau = "tau_cannon";
-	const char *gluon = "gluon gun";
+	const char *killer_weapon_name = "world";
 
 	if ( pKiller->flags & FL_CLIENT )
 	{
-		killer_index = ENTINDEX(ENT(pKiller));
-		
+		ENTINDEX( pKiller->pContainingEntity );
+
 		if ( pevInflictor )
 		{
 			if ( pevInflictor == pKiller )
 			{
-				// If the inflictor is the killer,  then it must be their current weapon doing the damage
-				CBasePlayer *pPlayer = (CBasePlayer*)CBaseEntity::Instance( pKiller );
-				
-				if ( pPlayer->m_pActiveItem )
+				CBasePlayer *pPlayer = dynamic_cast<CBasePlayer *>( GetPlayerDeathKiller( pKiller ) );
+				if ( pPlayer )
 				{
-					killer_weapon_name = pPlayer->m_pActiveItem->pszName();
+					CBasePlayerItem *pWeapon = pPlayer->m_pActiveItem;
+					if ( pWeapon )
+						killer_weapon_name = pWeapon->pszName();
 				}
 			}
 			else
 			{
-				killer_weapon_name = STRING( pevInflictor->classname );  // it's just that easy
+				killer_weapon_name = STRING( pevInflictor->classname );
 			}
 		}
 	}
 	else
 	{
-		killer_weapon_name = STRING( pevInflictor->classname );
+		killer_weapon_name = pevInflictor ? STRING( pevInflictor->classname ) : "Unknown";
+	}
+
+	CBaseEntity *pKillerEntity = GetPlayerDeathKiller( pKiller );
+	if ( sv_log_player_deaths.value != 0 && pVictim )
+	{
+		if ( pKillerEntity )
+		{
+			if ( pKillerEntity->IsPlayer() || !pKillerEntity->IsMonster() || sv_log_monster_monster_kills.value != 0 )
+			{
+				const char *victimLog = PlayerLog( pVictim->edict() );
+				const char *killerLog = PlayerLog( pKiller->pContainingEntity );
+				UTIL_LogPrintf( "\"%s\" killed \"%s\" with \"%s\"\n", killerLog, victimLog, killer_weapon_name );
+			}
+		}
+		else
+		{
+			UTIL_LogPrintf( "\"%s\" committed suicide with \"%s\"\n",
+				PlayerLog( pVictim->edict() ), killer_weapon_name );
+		}
 	}
 
 	// strip the monster_* or weapon_* from the inflictor's classname
@@ -1277,145 +1285,63 @@ void CHalfLifeMultiplay::DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, 
 	else if ( strncmp( killer_weapon_name, "func_", 5 ) == 0 )
 		killer_weapon_name += 5;
 
-	MESSAGE_BEGIN( MSG_ALL, gmsgDeathMsg );
-		WRITE_BYTE( killer_index );						// the killer
-		WRITE_BYTE( ENTINDEX(pVictim->edict()) );		// the victim
-		WRITE_STRING( killer_weapon_name );		// what they were killed by (should this be a string?)
-	MESSAGE_END();
-
 	// replace the code names with the 'real' names
 	if ( !strcmp( killer_weapon_name, "egon" ) )
-		killer_weapon_name = gluon;
+		killer_weapon_name = "gluon gun";
 	else if ( !strcmp( killer_weapon_name, "gauss" ) )
-		killer_weapon_name = tau;
+		killer_weapon_name = "tau_cannon";
 
-	if ( pVictim->pev == pKiller )  
+	if ( !pKillerEntity || !pVictim )
+		return;
+
+	char szText[512] = {};
+	const char *victimName = STRING( pVictim->pev->netname );
+	if ( pKiller->flags & FL_MONSTER )
 	{
-		// killed self
-
-		// team match?
-		if ( g_teamplay )
-		{
-			UTIL_LogPrintf( "\"%s<%i><%s><%s>\" committed suicide with \"%s\"\n",  
-				STRING( pVictim->pev->netname ), 
-				GETPLAYERUSERID( pVictim->edict() ),
-				GETPLAYERAUTHID( pVictim->edict() ),
-				g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( pVictim->edict() ), "model" ),
-				killer_weapon_name );		
-		}
-		else
-		{
-			UTIL_LogPrintf( "\"%s<%i><%s><%i>\" committed suicide with \"%s\"\n",  
-				STRING( pVictim->pev->netname ), 
-				GETPLAYERUSERID( pVictim->edict() ),
-				GETPLAYERAUTHID( pVictim->edict() ),
-				GETPLAYERUSERID( pVictim->edict() ),
-				killer_weapon_name );		
-		}
-	}
-	else if ( pKiller->flags & FL_CLIENT )
-	{
-		// team match?
-		if ( g_teamplay )
-		{
-			UTIL_LogPrintf( "\"%s<%i><%s><%s>\" killed \"%s<%i><%s><%s>\" with \"%s\"\n",  
-				STRING( pKiller->netname ),
-				GETPLAYERUSERID( ENT(pKiller) ),
-				GETPLAYERAUTHID( ENT(pKiller) ),
-				g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( ENT(pKiller) ), "model" ),
-				STRING( pVictim->pev->netname ),
-				GETPLAYERUSERID( pVictim->edict() ),
-				GETPLAYERAUTHID( pVictim->edict() ),
-				g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( pVictim->edict() ), "model" ),
-				killer_weapon_name );
-		}
-		else
-		{
-			UTIL_LogPrintf( "\"%s<%i><%s><%i>\" killed \"%s<%i><%s><%i>\" with \"%s\"\n",  
-				STRING( pKiller->netname ),
-				GETPLAYERUSERID( ENT(pKiller) ),
-				GETPLAYERAUTHID( ENT(pKiller) ),
-				GETPLAYERUSERID( ENT(pKiller) ),
-				STRING( pVictim->pev->netname ),
-				GETPLAYERUSERID( pVictim->edict() ),
-				GETPLAYERAUTHID( pVictim->edict() ),
-				GETPLAYERUSERID( pVictim->edict() ),
-				killer_weapon_name );
-		}
-	}
-	else
-	{ 
-		// killed by the world
-
-		// team match?
-		if ( g_teamplay )
-		{
-			UTIL_LogPrintf( "\"%s<%i><%s><%s>\" committed suicide with \"%s\" (world)\n",
-				STRING( pVictim->pev->netname ), 
-				GETPLAYERUSERID( pVictim->edict() ), 
-				GETPLAYERAUTHID( pVictim->edict() ),
-				g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( pVictim->edict() ), "model" ),
-				killer_weapon_name );		
-		}
-		else
-		{
-			UTIL_LogPrintf( "\"%s<%i><%s><%i>\" committed suicide with \"%s\" (world)\n",
-				STRING( pVictim->pev->netname ), 
-				GETPLAYERUSERID( pVictim->edict() ), 
-				GETPLAYERAUTHID( pVictim->edict() ),
-				GETPLAYERUSERID( pVictim->edict() ),
-				killer_weapon_name );		
-		}
-	}
-
-	char szText[512];
-
-	memset( szText, 0, sizeof( szText ) );
-
-	if ( Killer && (Killer->pev->flags & FL_MONSTER) )
-	{
-		sprintf( szText, "%s", STRING( pVictim->pev->netname ) );
-		strcat( szText, " was killed by " );
-		strcat( szText, ( strcspn( killer_weapon_name, "aeiouAEIOU" ) == 0 ) ? "an " : "a " );
-		strcat( szText, killer_weapon_name );
-		strcat( szText, ".\n" );
+		string_t formattedName = static_cast<CBaseMonster *>( pKillerEntity )->m_FormattedName;
+		const char *monsterName = formattedName ? STRING( formattedName ) : "monster";
+		UTIL_CopyString( szText, victimName, sizeof( szText ) );
+		UTIL_AppendString( szText, " was killed by ", sizeof( szText ) );
+		UTIL_AppendString( szText, strcspn( monsterName, "aeiouAEIOU" ) == 0 ? "an " : "a ", sizeof( szText ) );
+		UTIL_AppendString( szText, monsterName, sizeof( szText ) );
+		UTIL_AppendString( szText, ".\n", sizeof( szText ) );
 	}
 	else if ( pVictim->pev == pKiller )
 	{
-		sprintf( szText, "%s", STRING( pVictim->pev->netname ) );
-		strcat( szText, " committed suicide.\n" );
+		UTIL_CopyString( szText, victimName, sizeof( szText ) );
+		UTIL_AppendString( szText, " committed suicide.\n", sizeof( szText ) );
 	}
 	else if ( pKiller->flags & FL_CLIENT )
 	{
-		sprintf( szText, "%s", STRING( pKiller->netname ) );
-		strcat( szText, " : " );
-		strcat( szText, killer_weapon_name );
-		strcat( szText, " : " );
-		strcat( szText, STRING( pVictim->pev->netname ) );
-		strcat( szText, "\n" );
+		UTIL_CopyString( szText, STRING( pKiller->netname ), sizeof( szText ) );
+		UTIL_AppendString( szText, " : ", sizeof( szText ) );
+		UTIL_AppendString( szText, killer_weapon_name, sizeof( szText ) );
+		UTIL_AppendString( szText, " : ", sizeof( szText ) );
+		UTIL_AppendString( szText, victimName, sizeof( szText ) );
+		UTIL_AppendString( szText, "\n", sizeof( szText ) );
 	}
 	else if ( FClassnameIs( pKiller, "worldspawn" ) )
 	{
-		sprintf( szText, "%s", STRING( pVictim->pev->netname ) );
-		strcat( szText, ( pVictim->pev->flags & FL_DUCKING ) ? " drowned.\n" : " fell or something.\n" );
+		UTIL_CopyString( szText, victimName, sizeof( szText ) );
+		UTIL_AppendString( szText, ( pVictim->m_bitsLastDamageType & DMG_DROWN ) ? " drowned.\n" : " fell or something.\n", sizeof( szText ) );
 	}
 	else if ( pKiller->solid == SOLID_BSP )
 	{
-		sprintf( szText, "%s", STRING( pVictim->pev->netname ) );
+		UTIL_CopyString( szText, victimName, sizeof( szText ) );
 
 		if ( FClassnameIs( pKiller, "func_tank" ) || FClassnameIs( pKiller, "func_tanklaser" ) || FClassnameIs( pKiller, "func_tankrocket" ) )
-			strcat( szText, " was killed by a mounted gun.\n" );
+			UTIL_AppendString( szText, " was killed by a mounted gun.\n", sizeof( szText ) );
 		else
-			strcat( szText, " was smashed.\n" );
+			UTIL_AppendString( szText, " was smashed.\n", sizeof( szText ) );
 	}
 	else if ( FClassnameIs( pKiller, "monster_mortar" ) )
 	{
-		sprintf( szText, "%s", STRING( pVictim->pev->netname ) );
-		strcat( szText, " was blown to shreds by a mortar.\n" );
+		UTIL_CopyString( szText, victimName, sizeof( szText ) );
+		UTIL_AppendString( szText, " was blown to shreds by a mortar.\n", sizeof( szText ) );
 	}
 	else
 	{
-		int bits = pVictim->m_bitsDamageType;
+		int bits = pVictim->m_bitsLastDamageType;
 		const char *pszPhrase = NULL;
 
 		if ( bits & DMG_CRUSH )
@@ -1454,25 +1380,25 @@ void CHalfLifeMultiplay::DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, 
 			pszPhrase = " has been dissolved";
 		else if ( bits & DMG_RADIATION )
 			pszPhrase = " went nuclear";
-		else if ( bits & DMG_DROWNRECOVER )
+		else if ( bits & DMG_SLOWBURN )
 			pszPhrase = " was baked like a cake";
 		else if ( bits & DMG_MORTAR )
 			pszPhrase = " was blown to shreds by a mortar";
 		else if ( bits & DMG_SNIPER )
 			pszPhrase = " was executed by a Sniper";
 
-		sprintf( szText, "%s", STRING( pVictim->pev->netname ) );
+		UTIL_CopyString( szText, victimName, sizeof( szText ) );
 
 		if ( pszPhrase )
 		{
-			strcat( szText, pszPhrase );
-			strcat( szText, ".\n" );
+			UTIL_AppendString( szText, pszPhrase, sizeof( szText ) );
+			UTIL_AppendString( szText, ".\n", sizeof( szText ) );
 		}
 		else
-			strcat( szText, " died mysteriously.\n" );
+			UTIL_AppendString( szText, " died mysteriously.\n", sizeof( szText ) );
 	}
 
-	UTIL_ClientPrintAll( HUD_PRINTTALK, szText );
+	UTIL_ClientPrintAll( HUD_PRINTNOTIFY, szText );
 }
 
 //=========================================================
@@ -1760,12 +1686,7 @@ void CHalfLifeMultiplay :: GoToIntermission( void )
 	g_flIntermissionStartTime = gpGlobals->time;
 
 	// bounds check
-	float flChatTime = CVAR_GET_FLOAT( "mp_chattime" );
-
-	if ( flChatTime > MAX_INTERMISSION_TIME )
-		flChatTime = MAX_INTERMISSION_TIME;
-	else if ( flChatTime < MIN_INTERMISSION_TIME )
-		flChatTime = MIN_INTERMISSION_TIME;
+	float flChatTime = V_max( MIN_INTERMISSION_TIME, V_min( MAX_INTERMISSION_TIME, CVAR_GET_FLOAT( "mp_chattime" ) ) );
 
 	m_flIntermissionEndTime = gpGlobals->time + flChatTime;
 

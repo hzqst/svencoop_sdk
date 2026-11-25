@@ -156,7 +156,7 @@ void CTriggerRandom::Fire( CBaseEntity *activator )
 
 			InitUnique();
 			ALERT( at_aiconsole, "%s(%s): all targets fired; reusable mode on; resetting state\n",
-			       STRING( pev->classname ), STRING( pev->targetname ) );
+			       pev ? STRING( pev->classname ) : "", pev ? STRING( pev->targetname ) : "" );
 		}
 
 		unsigned int attempts = 0;
@@ -175,7 +175,7 @@ void CTriggerRandom::Fire( CBaseEntity *activator )
 		if ( attempts == 256 )
 		{
 			ALERT( at_warning, "%s(%s): random selection failed, selecting first free target\n",
-			       STRING( pev->classname ), STRING( pev->targetname ) );
+			       pev ? STRING( pev->classname ) : "", pev ? STRING( pev->targetname ) : "" );
 
 			for ( unsigned int i = 0; i < m_uiTargetsUse; i++ )
 			{
@@ -230,7 +230,9 @@ void CTriggerRandom::RandomThink( void )
 	}
 
 	if ( m_flMinDelay > 0 && m_flMaxDelay > 0 )
+	{
 		pev->nextthink = gpGlobals->time + RandomDelay();
+	}
 	else
 		m_bActive = false;
 }

@@ -45,10 +45,10 @@ void CScientistCleansuit::Spawn( void )
 	Precache();
 
 	if ( !SetupModel() )
-		UTIL_SetModel( this, "models/cleansuit_scientist.mdl" );
+		SET_MODEL( ENT( pev ), "models/cleansuit_scientist.mdl" );
 
 	if ( pev->health == 0 )
-		pev->health = gSkillData.scientistHealth;
+		pev->health = sk_scientist_health.value;
 
 	UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
 	pev->solid = SOLID_SLIDEBOX;
@@ -102,16 +102,7 @@ int CScientistCleansuit::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAtta
 	if ( bitsDamageType & ( DMG_DROWN | DMG_NERVEGAS | DMG_POISON | DMG_RADIATION | DMG_ACID ) )
 		return 0;
 
-	if ( !pevAttacker || CheckAttacker( CBaseEntity::Instance( pevAttacker ) ) )
-		return 0;
-
-	if ( pevInflictor && FBitSet( pevInflictor->flags, FL_CLIENT ) )
-	{
-		Remember( bits_MEMORY_PROVOKED );
-		StopPlayerFollowing( true, false );
-	}
-
-	return CTalkMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
+	return CScientist::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
 }
 
 class CScientistCleansuitDead : public CBaseMonster
@@ -129,10 +120,19 @@ LINK_ENTITY_TO_CLASS( monster_cleansuit_scientist_dead, CScientistCleansuitDead 
 
 void CScientistCleansuitDead::Precache( void )
 {
-	const char *model = pev->model ? STRING( pev->model ) : "models/cleansuit_scientist.mdl";
+	const char *model;
+	if ( pev->model )
+	{
+		UTIL_PrecacheModel( this, STRING( pev->model ) );
+		model = STRING( pev->model );
+	}
+	else
+	{
+		model = "models/cleansuit_scientist.mdl";
+		UTIL_PrecacheModel( this, model );
+	}
 
-	UTIL_PrecacheModel( this, model );
-	UTIL_SetModel( this, model );
+	SET_MODEL( ENT( pev ), model );
 }
 
 void CScientistCleansuitDead::Spawn( void )
@@ -143,7 +143,7 @@ void CScientistCleansuitDead::Spawn( void )
 	};
 
 	Precache();
-	pev->health = gSkillData.scientistHealth;
+	pev->health = sk_scientist_health.value;
 	m_bloodColor = BLOOD_COLOR_RED;
 	pev->sequence = LookupSequence( poses[m_iPose] );
 

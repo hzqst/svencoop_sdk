@@ -60,6 +60,7 @@ typedef struct globalvars_s
 
 	void*		pSaveData;
 	vec3_t		vecLandmarkOffset;
+	int			maxModels;
 } globalvars_t;
 
 

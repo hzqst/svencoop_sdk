@@ -223,7 +223,7 @@ void CXenMaker::MakeMonster( void )
 
 	edict_t *child = CREATE_NAMED_ENTITY( m_iszMonsterClassname );
 
-	if ( FNullEnt( child ) || child->free )
+	if ( !child || child->free || FNullEnt( child ) )
 	{
 		ALERT( at_console, "NULL entity in xenmaker '%s' (X%f Y%f Z%f)\n",
 		       STRING( pev->targetname ), (double) pev->origin.x, (double) pev->origin.y, (double) pev->origin.z );

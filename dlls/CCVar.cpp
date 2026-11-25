@@ -52,7 +52,7 @@ void CCVar::SetStringInternal(const char *value, bool notify)
 	float oldFloat = m_flValue;
 
 	m_Value = value;
-	m_flValue = (float)strtod(value, NULL);
+	m_flValue = (float)atof(value);
 
 	if (notify)
 		Dispatch(oldValue, oldFloat);

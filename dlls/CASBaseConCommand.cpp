@@ -38,6 +38,8 @@ CString CASBaseConCommand::GetAdditionalInfo(void) const
 
 void CASBaseConCommand::Release(void) const
 {
+	m_bGCFlag = false;
+
 	if (InternalRelease())
 		delete this;
 }

@@ -20,7 +20,7 @@ CBaseEntity *HurtRemoteHandleEntity( EHANDLE &handle )
 bool HurtRemoteEntityValid( CBaseEntity *entity )
 {
 	return entity && entity->pev && entity->pev->pContainingEntity &&
-	       !entity->pev->pContainingEntity->free && ENTINDEX( entity->pev->pContainingEntity ) != 0;
+	       !entity->pev->pContainingEntity->free && !FNullEnt( entity->pev->pContainingEntity );
 }
 
 void HurtRemoteSetHandle( EHANDLE &handle, CBaseEntity *entity )
@@ -52,7 +52,7 @@ void CTriggerHurtRemote::Spawn( void )
 
 	if ( m_bActive )
 	{
-		SetThink( NULL );
+		SetThink( &CTriggerHurtRemote::Think );
 		pev->nextthink = gpGlobals->time + 0.1;
 	}
 }
@@ -141,11 +141,14 @@ void CTriggerHurtRemote::FindTargets( void )
 		return;
 	}
 
-	while ( m_iszTargetClass && ( target = UTIL_FindEntityByClassname( target, STRING( m_iszTargetClass ) ) ) != NULL )
+	if ( m_iszTargetClass )
 	{
-		HurtRemoteSetHandle( node->entity, target );
-		node->next = new TargetNode;
-		node = node->next;
+		while ( ( target = UTIL_FindEntityByClassname( target, STRING( m_iszTargetClass ) ) ) != NULL )
+		{
+			HurtRemoteSetHandle( node->entity, target );
+			node->next = new TargetNode;
+			node = node->next;
+		}
 	}
 }
 
@@ -220,7 +223,7 @@ void CTriggerHurtRemote::Think( void )
 
 	if ( m_bActive && ( pev->spawnflags & SF_HURTREMOTE_REPEAT ) )
 	{
-		SetThink( NULL );
+		SetThink( &CTriggerHurtRemote::Think );
 		pev->nextthink = gpGlobals->time + m_flHurtDelay;
 	}
 	else

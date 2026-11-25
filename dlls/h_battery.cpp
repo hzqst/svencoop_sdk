@@ -43,7 +43,7 @@ bool CFuncCharger::ChargeDenied( CBasePlayer *player )
 	if ( m_flSoundTime <= gpGlobals->time )
 	{
 		m_flSoundTime = gpGlobals->time + 0.62f;
-		EMIT_SOUND_DYN( edict(), CHAN_ITEM, m_pszDeniedSound, 1.0f, ATTN_NORM,
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, m_pszDeniedSound, 1.0f, ATTN_NORM,
 		                0, PITCH_NORM, 0, false, g_vecZero );
 	}
 

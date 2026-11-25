@@ -58,7 +58,7 @@ CBasePlayer *UTIL_PlayerBySteamId( const char *authId )
 		if ( !player )
 			continue;
 
-		edict_t *entity = player->pev ? ENT( player->pev ) : NULL;
+		edict_t *entity = ENT( player->pev );
 		const char *playerAuthId = GETPLAYERAUTHID( entity );
 
 		if ( playerAuthId && !stricmp( authId, playerAuthId ) )
@@ -144,7 +144,7 @@ int UTIL_CountPlayersInBrushVolume( bool ignoreDeadPlayers, CBaseEntity *volume,
 
 		TraceResult trace;
 		int hull = ( player->pev->flags & FL_DUCKING ) ? head_hull : human_hull;
-		edict_t *volumeEntity = volume->pev ? ENT( volume->pev ) : NULL;
+		edict_t *volumeEntity = ENT( volume->pev );
 
 		trace.vecEndPos = Vector( 0, 0, 0 );
 		trace.vecPlaneNormal = Vector( 0, 0, 0 );
@@ -185,7 +185,7 @@ CBaseEntity *UTIL_RandomTargetname( const char *targetname )
 
 	for ( ;; )
 	{
-		edict_t *start = current && current->pev ? current->pev->pContainingEntity : NULL;
+		edict_t *start = current ? current->edict() : NULL;
 		edict_t *entity = FIND_ENTITY_BY_STRING( start, "targetname", targetname );
 
 		if ( !entity || entity->free || !OFFSET( entity ) )
@@ -341,7 +341,7 @@ bool UTIL_TeleportEntity( CBaseEntity *entity, CBaseEntity *destination, int fla
 
 	if ( CVAR_GET_FLOAT( "mp_telefrag" ) == 1.0f && !FClassnameIs( entity->pev, "weaponbox" ) )
 	{
-		edict_t *teleported = entity->pev ? entity->pev->pContainingEntity : NULL;
+		edict_t *teleported = entity->edict();
 		CBaseEntity *occupants[16];
 		Vector mins( origin.x - 20, origin.y - 20, origin.z - 80 );
 		Vector maxs( origin.x + 20, origin.y + 20, origin.z );
@@ -351,7 +351,7 @@ bool UTIL_TeleportEntity( CBaseEntity *entity, CBaseEntity *destination, int fla
 		{
 			CBaseEntity *occupant = occupants[index];
 			bool isPlayer = occupant->IsPlayer() != FALSE;
-			edict_t *other = occupant->pev ? occupant->pev->pContainingEntity : NULL;
+			edict_t *other = occupant->edict();
 
 			if ( isPlayer && other != teleported )
 			{
@@ -367,7 +367,7 @@ bool UTIL_TeleportEntity( CBaseEntity *entity, CBaseEntity *destination, int fla
 			}
 			else
 			{
-				other = occupant->pev ? occupant->pev->pContainingEntity : NULL;
+				other = occupant->edict();
 
 				if ( other != teleported )
 				{
@@ -1114,7 +1114,7 @@ CBaseEntity *UTIL_FindEntityInSphere( CBaseEntity *start, const Vector &center, 
 {
 	if ( !value )
 	{
-		edict_t *previous = start && start->pev ? start->pev->pContainingEntity : NULL;
+		edict_t *previous = start ? start->edict() : NULL;
 		edict_t *entity = FIND_ENTITY_IN_SPHERE( previous, center, radius );
 
 		if ( !entity || entity->free || !OFFSET( entity ) || entity->free )
@@ -1128,7 +1128,7 @@ CBaseEntity *UTIL_FindEntityInSphere( CBaseEntity *start, const Vector &center, 
 
 	for ( ;; )
 	{
-		edict_t *previous = current && current->pev ? current->pev->pContainingEntity : NULL;
+		edict_t *previous = current ? current->edict() : NULL;
 		edict_t *entity = FIND_ENTITY_BY_STRING( previous, key, value );
 
 		if ( !entity || entity->free || !OFFSET( entity ) || entity->free )
@@ -1159,7 +1159,7 @@ CBaseEntity *UTIL_FindEntityByString( CBaseEntity *pStartEntity, const char *szK
 
 	pentEntity = FIND_ENTITY_BY_STRING( pentEntity, szKeyword, szValue );
 
-	if (!pentEntity || pentEntity->free || FNullEnt(pentEntity))
+	if (!pentEntity || pentEntity->free || FNullEnt(pentEntity) || pentEntity->free)
 		return NULL;
 
 	return CBaseEntity::Instance(pentEntity);
@@ -1210,7 +1210,7 @@ CBaseEntity	*UTIL_PlayerByIndex( int playerIndex )
 	if ( playerIndex > 0 && playerIndex <= gpGlobals->maxClients )
 	{
 		edict_t *pPlayerEdict = INDEXENT( playerIndex );
-		if ( pPlayerEdict && !pPlayerEdict->free )
+		if ( pPlayerEdict && !pPlayerEdict->free && !FNullEnt( pPlayerEdict ) && !pPlayerEdict->free )
 		{
 			pPlayer = CBaseEntity::Instance( pPlayerEdict );
 
@@ -1816,6 +1816,7 @@ void AlignToGroundStatic( CBaseEntity *entity, float speed )
 		useFullAngles = ( maxs.x - mins.x ) + ( maxs.y - mins.y ) + ( maxs.z - mins.z ) >= 60;
 	}
 
+	pev = entity->pev;
 	Vector angles = pev->angles;
 
 	if ( !pev->groundentity && !( pev->flags & FL_ONGROUND ) && !useFullAngles )
@@ -1830,9 +1831,11 @@ void AlignToGroundStatic( CBaseEntity *entity, float speed )
 
 	groundTrace.vecEndPos = g_vecZero;
 	groundTrace.vecPlaneNormal = g_vecZero;
+	pev = entity->pev;
 	UTIL_TraceLine( pev->origin + Vector( 0, 0, 8 ), pev->origin - Vector( 0, 0, 32 ),
-	                ignore_monsters, entity->edict(), &groundTrace );
+	                ignore_monsters, pev->pContainingEntity, &groundTrace );
 
+	pev = entity->pev;
 	if ( groundTrace.vecPlaneNormal == Vector( 0, 0, 1 ) )
 	{
 		pev->angles.x = UTIL_ApproachAngle( 0, pev->angles.x, 50 );
@@ -1845,8 +1848,9 @@ void AlignToGroundStatic( CBaseEntity *entity, float speed )
 	heightTrace.vecEndPos = g_vecZero;
 	heightTrace.vecPlaneNormal = g_vecZero;
 	UTIL_TraceLine( pev->origin + Vector( 0, 0, 1 ), pev->origin + Vector( 0, 0, 24 ),
-	                ignore_monsters, entity->edict(), &heightTrace );
+	                ignore_monsters, pev->pContainingEntity, &heightTrace );
 
+	pev = entity->pev;
 	float height = heightTrace.vecEndPos.z - pev->origin.z;
 	TraceResult forwardTrace;
 	Vector start = pev->origin + gpGlobals->v_forward * 8 + Vector( 0, 0, height );
@@ -1854,19 +1858,21 @@ void AlignToGroundStatic( CBaseEntity *entity, float speed )
 	forwardTrace.vecEndPos = g_vecZero;
 	forwardTrace.vecPlaneNormal = g_vecZero;
 	UTIL_TraceLine( start, start - Vector( 0, 0, 48 ), ignore_monsters, dont_ignore_glass,
-	                entity->edict(), &forwardTrace );
+	                pev->pContainingEntity, &forwardTrace );
 
 	TraceResult rightTrace;
 
+	pev = entity->pev;
 	start = pev->origin + gpGlobals->v_right * 8 + Vector( 0, 0, height );
 	rightTrace.vecEndPos = g_vecZero;
 	rightTrace.vecPlaneNormal = g_vecZero;
 	UTIL_TraceLine( start, start - Vector( 0, 0, 48 ), ignore_monsters, dont_ignore_glass,
-	                entity->edict(), &rightTrace );
+	                pev->pContainingEntity, &rightTrace );
 
 	CBaseEntity *forwardEntity = CBaseEntity::Instance( forwardTrace.pHit );
 	CBaseEntity *rightEntity = CBaseEntity::Instance( rightTrace.pHit );
 
+	pev = entity->pev;
 	if ( ( pev->groundentity || ( pev->flags & FL_ONGROUND ) ) &&
 	     ( forwardTrace.flFraction == 1 || rightTrace.flFraction == 1 ) )
 		return;
@@ -1875,10 +1881,10 @@ void AlignToGroundStatic( CBaseEntity *entity, float speed )
 	float pitch = UTIL_VecToAngles( forwardTrace.vecEndPos - groundTrace.vecEndPos ).x;
 
 	if ( rightEntity && rightEntity->IsBSPModel() )
-		pev->angles.x = UTIL_ApproachAngle( pitch, pev->angles.x, speed );
+		entity->pev->angles.x = UTIL_ApproachAngle( pitch, entity->pev->angles.x, speed );
 
 	if ( forwardEntity && forwardEntity->IsBSPModel() )
-		pev->angles.z = UTIL_ApproachAngle( roll, pev->angles.z, speed );
+		entity->pev->angles.z = UTIL_ApproachAngle( roll, entity->pev->angles.z, speed );
 }
 
 float UTIL_AngleDistance( float next, float cur )
@@ -1909,8 +1915,9 @@ char* UTIL_VarArgs( const char *format, ... )
 	va_list		argptr;
 	static char		string[1024];
 	
+	memset( string, 0, sizeof( string ) );
 	va_start (argptr, format);
-	vsprintf (string, format,argptr);
+	vsnprintf( string, sizeof( string ) - 1, format, argptr );
 	va_end (argptr);
 
 	return string;	
@@ -1930,7 +1937,7 @@ int UTIL_IsMasterTriggered(string_t sMaster, CBaseEntity *pActivator)
 
 	edict_t *pentTarget = FIND_ENTITY_BY_TARGETNAME( NULL, STRING( sMaster ) );
 
-	if ( !FNullEnt( pentTarget ) )
+	if ( pentTarget && !pentTarget->free && !FNullEnt( pentTarget ) )
 	{
 		CBaseEntity *pMaster = CBaseEntity::Instance( pentTarget );
 
@@ -2361,8 +2368,16 @@ void UTIL_BubbleTrail( Vector from, Vector to, int count )
 
 void UTIL_Remove( CBaseEntity *pEntity )
 {
-	if ( !pEntity )
+	if ( !pEntity || pEntity == CWorld::GetInstance() )
 		return;
+
+	if ( pEntity->IsPlayer() )
+	{
+		pEntity->pev->health = 1.0f;
+		CWorld *world = CWorld::GetInstance();
+		pEntity->TakeDamage( world->pev, world->pev, 9999.0f, DMG_ALWAYSGIB );
+		return;
+	}
 
 	pEntity->UpdateOnRemove();
 	pEntity->pev->flags |= FL_KILLME;
@@ -2383,13 +2398,10 @@ void UTIL_PrecacheOther( const char *szClassname )
 	edict_t	*pent;
 
 	pent = CREATE_NAMED_ENTITY( MAKE_STRING( szClassname ) );
-	if ( FNullEnt( pent ) )
-	{
-		ALERT ( at_console, "NULL Ent in UTIL_PrecacheOther\n" );
+	if ( !pent || pent->free || !OFFSET( pent ) )
 		return;
-	}
-	
-	CBaseEntity *pEntity = CBaseEntity::Instance (VARS( pent ));
+
+	CBaseEntity *pEntity = CBaseEntity::Instance( VARS( pent ) );
 	if (pEntity)
 		pEntity->Precache( );
 	REMOVE_ENTITY(pent);
@@ -2399,13 +2411,19 @@ void UTIL_PrecacheMonster( const char *className, bool ally )
 {
 	edict_t *entity = CREATE_NAMED_ENTITY( MAKE_STRING( className ) );
 
-	if ( !entity || entity->free || !ENTINDEX( entity ) )
+	if ( !entity || entity->free || !OFFSET( entity ) )
 	{
 		ALERT( at_console, "NULL Ent in UTIL_PrecacheOther\n" );
 		return;
 	}
 
-	CBaseEntity *instance = CBaseEntity::Instance( VARS( entity ) );
+	edict_t *containingEntity = VARS( entity )->pContainingEntity;
+	if ( !containingEntity )
+		containingEntity = ENT( 0 );
+
+	CBaseEntity *instance = NULL;
+	if ( containingEntity && !containingEntity->free )
+		instance = (CBaseEntity *) GET_PRIVATE( containingEntity );
 
 	if ( instance )
 	{
@@ -2418,16 +2436,17 @@ void UTIL_PrecacheMonster( const char *className, bool ally )
 	REMOVE_ENTITY( entity );
 }
 
-static int g_iPrecachedModelCount = 0;
-
-int UTIL_GetPrecachedModelCount( void )
+CWorld *GetModelReplacementWorld( void )
 {
-	return g_iPrecachedModelCount;
-}
+	edict_t *edict = ENT( 0 );
 
-void UTIL_ResetPrecachedModelCount( void )
-{
-	g_iPrecachedModelCount = 0;
+	if ( edict )
+		edict = edict->v.pContainingEntity;
+
+	if ( !edict )
+		edict = ENT( 0 );
+
+	return edict && !edict->free ? static_cast<CWorld *>( GET_PRIVATE( edict ) ) : NULL;
 }
 
 int PrecacheModel_Intercept( CBaseEntity *entity, const char *model )
@@ -2459,24 +2478,19 @@ int PrecacheModel_Intercept( CBaseEntity *entity, const char *model )
 
 	if ( g_szModelReplacement )
 	{
-		CWorld *world = (CWorld *) CBaseEntity::Instance( INDEXENT( 0 ) );
+		CWorld *world = GetModelReplacementWorld();
 
 		model = world->MODELREPLACEMENT_Find( model );
 	}
 
-	int index = g_engfuncs.pfnPrecacheModel( (char *) model );
-
-	if ( index > g_iPrecachedModelCount )
-		g_iPrecachedModelCount = index;
-
-	return index;
+	return g_engfuncs.pfnPrecacheModel( (char *) model );
 }
 
 void SetModel_Intercept( edict_t *entity, const char *model )
 {
 	if ( g_szModelReplacement )
 	{
-		CWorld *world = (CWorld *) CBaseEntity::Instance( INDEXENT( 0 ) );
+		CWorld *world = GetModelReplacementWorld();
 
 		model = world->MODELREPLACEMENT_Find( model );
 	}
@@ -2520,7 +2534,7 @@ void SetModelWithBounds( CBaseEntity *entity, const char *model )
 	Vector minimum = entity->pev->mins;
 	Vector maximum = entity->pev->maxs;
 
-	SET_MODEL( entity->edict(), model );
+	g_engfuncs.pfnSetModel( entity->edict(), model );
 	UTIL_SetOrigin( entity->pev, entity->pev->origin );
 	UTIL_SetSize( entity->pev, minimum, maximum );
 	entity->SetObjectCollisionBox();
@@ -2611,7 +2625,15 @@ void UTIL_StripToken2( const char *pKey, char *pDest, unsigned int size )
 	if ( !pszToken )
 		return;
 
-	UTIL_CopyString( pDest, pszToken + 1, size );
+	++pszToken;
+	unsigned int i = 0;
+
+	while ( i < size - 1 && pszToken[i] )
+	{
+		pDest[i] = pszToken[i];
+		i++;
+	}
+	pDest[i] = 0;
 }
 
 //=========================================================

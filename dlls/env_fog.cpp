@@ -30,7 +30,7 @@ void CEnvFog::Spawn( void )
 	if ( !( pev->spawnflags & SF_FOG_START_OFF ) )
 		m_fActive = true;
 
-	SetThink( NULL );
+	SetThink( &CEnvFog::Think );
 	pev->nextthink = gpGlobals->time + 0.1;
 }
 
@@ -105,7 +105,7 @@ void CEnvFog::Think( void )
 		MESSAGE_END();
 	}
 
-	SetThink( NULL );
+	SetThink( &CEnvFog::Think );
 	pev->nextthink = gpGlobals->time + 0.1;
 }
 
@@ -114,7 +114,11 @@ void CEnvFog::UpdatePlayer( CBaseEntity *player )
 	if ( !player )
 		return;
 
-	MESSAGE_BEGIN( MSG_ONE, gmsgFog, NULL, player->edict() );
+	edict_t *recipient = NULL;
+	if ( player->pev )
+		recipient = player->edict();
+
+	MESSAGE_BEGIN( MSG_ONE, gmsgFog, NULL, recipient );
 		WRITE_SHORT( m_iID );
 		WRITE_BYTE( m_fActive );
 		WRITE_COORD( m_vecLastOrigin.x );

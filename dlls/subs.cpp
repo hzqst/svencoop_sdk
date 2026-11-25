@@ -61,7 +61,7 @@ void CNullEntity :: Spawn( void )
 }
 LINK_ENTITY_TO_CLASS(info_null,CNullEntity);
 
-class CBaseDMStart : public CPointEntity
+class CBaseDMStart : public CBaseDelay
 {
 public:
 	void		Spawn( void );
@@ -125,7 +125,7 @@ void CBaseDMStart::KeyValue( KeyValueData *pkvd )
 {
 	if (FStrEq(pkvd->szKeyName, "master"))
 	{
-		pev->netname = ALLOC_STRING(pkvd->szValue);
+		pev->netname = AllocStringLocal( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else if ( FStrEq( pkvd->szKeyName, "triggerstate" ) )
@@ -136,7 +136,7 @@ void CBaseDMStart::KeyValue( KeyValueData *pkvd )
 		pkvd->fHandled = TRUE;
 	}
 	else
-		CPointEntity::KeyValue( pkvd );
+		CBaseDelay::KeyValue( pkvd );
 }
 
 Vector CBaseDMStart::GetSpawnSpot( void )
@@ -242,22 +242,6 @@ BOOL CBaseDMStart::IsTriggered( CBaseEntity *pEntity )
 // This updates global tables that need to know about entities being removed
 void CBaseEntity::UpdateOnRemove( void )
 {
-	int	i;
-
-	if ( FBitSet( pev->flags, FL_GRAPHED ) )
-	{
-	// this entity was a LinkEnt in the world node graph, so we must remove it from
-	// the graph since we are removing it from the world.
-		for ( i = 0 ; i < WorldGraph.m_cLinks ; i++ )
-		{
-			if ( WorldGraph.m_pLinkPool [ i ].m_pLinkEnt == pev )
-			{
-				// if this link has a link ent which is the same ent that is removing itself, remove it!
-				WorldGraph.m_pLinkPool [ i ].m_pLinkEnt = NULL;
-			}
-		}
-	}
-
 	// tell owner ( if any ) that we're gone. This is mostly for MonsterMaker functionality
 	CBaseEntity *pOwner = CBaseEntity::Instance( pev->owner );
 
@@ -312,7 +296,7 @@ void CBaseDelay :: KeyValue( KeyValueData *pkvd )
 	}
 	else if (FStrEq(pkvd->szKeyName, "killtarget"))
 	{
-		m_iszKillTarget = ALLOC_STRING(pkvd->szValue);
+		m_iszKillTarget = AllocStringLocal( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -460,7 +444,7 @@ void CBaseDelay :: SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, fl
 	if (m_flDelay != 0)
 	{
 		// create a temp object to fire at a later time
-		CBaseDelay *pTemp = GetClassPtr( (CBaseDelay *)NULL);
+		CBaseDelay *pTemp = GetClassPtr( (CBaseDelay *) NULL );
 		pTemp->pev->classname = MAKE_STRING("DelayedUse");
 
 		pTemp->pev->nextthink = gpGlobals->time + m_flDelay;
@@ -470,7 +454,7 @@ void CBaseDelay :: SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, fl
 		// Save the useType
 		pTemp->pev->button = (int)useType;
 
-		pTemp->pev->frags = value;
+		pTemp->pev->fuser1 = value;
 		pTemp->m_iszKillTarget = m_iszKillTarget;
 		pTemp->m_flDelay = 0; // prevent "recursion"
 		pTemp->pev->target = pev->target;
@@ -513,7 +497,7 @@ void CBaseDelay :: SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, fl
 
 		ALERT( at_aiconsole, "KillTarget: %s\n", STRING(m_iszKillTarget) );
 		pentKillTarget = FIND_ENTITY_BY_TARGETNAME( NULL, STRING(m_iszKillTarget) );
-		while ( !FNullEnt(pentKillTarget) )
+		while ( pentKillTarget && !pentKillTarget->free && !FNullEnt( pentKillTarget ) )
 		{
 			UTIL_Remove( CBaseEntity::Instance(pentKillTarget) );
 
@@ -577,7 +561,7 @@ void CBaseDelay::DelayThink( void )
 	if ( activator && !activator->free && GET_PRIVATE( activator ) )
 		pActivator = CBaseEntity::Instance( activator );
 
-	SUB_UseTargets( pActivator, (USE_TYPE)pev->button, pev->frags );
+	SUB_UseTargets( pActivator, (USE_TYPE)pev->button, pev->fuser1 );
 	REMOVE_ENTITY(ENT(pev));
 }
 
@@ -635,7 +619,7 @@ void CBaseToggle::KeyValue( KeyValueData *pkvd )
 	}
 	else if (FStrEq(pkvd->szKeyName, "master"))
 	{
-		m_sMaster = ALLOC_STRING(pkvd->szValue);
+		m_sMaster = AllocStringLocal( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else if (FStrEq(pkvd->szKeyName, "distance"))
@@ -693,14 +677,6 @@ After moving, set origin to exact final destination, call "move done" function
 */
 void CBaseToggle :: LinearMoveDone( void )
 {
-	Vector delta = m_vecFinalDest - pev->origin;
-	float error = delta.Length();
-	if ( error > 0.03125 )
-	{
-		LinearMove( m_vecFinalDest, 100 );
-		return;
-	}
-
 	UTIL_SetOrigin(pev, m_vecFinalDest);
 	pev->velocity = g_vecZero;
 	pev->nextthink = -1;
@@ -762,6 +738,9 @@ After rotating, set angle to exact final angle, call "move done" function
 void CBaseToggle :: AngularMoveDone( void )
 {
 	pev->angles = m_vecFinalAngle;
+	UTIL_SetOrigin( pev, pev->origin );
+	SetModel_Intercept( ENT( pev ), STRING( pev->model ) );
+	UTIL_SetSize( pev, pev->mins, pev->maxs );
 	pev->avelocity = g_vecZero;
 	pev->nextthink = -1;
 	if ( m_pfnCallWhenMoveDone )

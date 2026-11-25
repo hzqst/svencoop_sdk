@@ -236,6 +236,6 @@ void CASFile::WriteBytes(const void *data, unsigned int size)
 		return;
 
 	g_pFileSystem->Write(data, size, m_pFile);
-	pQuota->UpdateBytesWrittenToFile(m_szFileName, size);
+	m_pFileSystem->m_pFileQuota->UpdateBytesWrittenToFile(m_szFileName, size);
 	m_uiBytesWritten += size;
 }

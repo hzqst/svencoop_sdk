@@ -118,7 +118,7 @@ CASHook g_ClientConnectedHook( 1 << DllType::SERVER, 2, "Player", "ClientConnect
                                "edict_t@, const string& in, const string& in, bool& out, string& out", scriptHookArguments[7] );
 CASHook g_PlayerSpawnHook( 1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerSpawn",
                            "CBasePlayer@", scriptHookArguments[8] );
-static CASHook g_PlayerCanRespawnHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerCanRespawn",
+CASHook g_PlayerCanRespawnHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerCanRespawn",
                                       "CBasePlayer@, bool& out", scriptHookArguments[9]);
 CASHook g_CanCollectHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "PickupObject", "CanCollect",
                                 "CBaseEntity@, CBaseEntity@, bool& out", scriptHookArguments[10]);
@@ -128,7 +128,7 @@ CASHook g_CollectedHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "PickupObje
                                "CBaseEntity@, CBaseEntity@", scriptHookArguments[12]);
 CASHook g_PlayerTakeDamageHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerTakeDamage",
                                       "DamageInfo@", scriptHookArguments[13]);
-static CASHook g_PlayerKilledHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerKilled",
+CASHook g_PlayerKilledHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerKilled",
                                   "CBasePlayer@, CBaseEntity@, int", scriptHookArguments[14]);
 CASHook g_PlayerEnteredObserverHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerEnteredObserver",
                                            "CBasePlayer@", scriptHookArguments[15]);
@@ -144,13 +144,13 @@ CASHook g_GetPlayerSpawnSpotHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "P
                                         "CBasePlayer@ pPlayer, CBaseEntity@& out ppEntSpawnSpot", scriptHookArguments[20]);
 CASHook g_PlayerRevivedHook( 1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Player", "PlayerRevived",
                            "CBasePlayer@ pPlayer", scriptHookArguments[21] );
-static CASHook g_PlayerDecalHook(1 << DllType::SERVER, 2, "Player", "PlayerDecal",
+CASHook g_PlayerDecalHook(1 << DllType::SERVER, 2, "Player", "PlayerDecal",
                                  "CBasePlayer@, const TraceResult& in", scriptHookArguments[22]);
-static CASHook g_PlayerPreDecalHook(1 << DllType::SERVER, 2, "Player", "PlayerPreDecal",
+CASHook g_PlayerPreDecalHook(1 << DllType::SERVER, 2, "Player", "PlayerPreDecal",
                                     "CBasePlayer@, const TraceResult& in, bool& out bResult", scriptHookArguments[23]);
-static CASHook g_WeaponPrimaryAttackHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Weapon", "WeaponPrimaryAttack",
+CASHook g_WeaponPrimaryAttackHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Weapon", "WeaponPrimaryAttack",
                                          "CBasePlayer@, CBasePlayerWeapon@", scriptHookArguments[24]);
-static CASHook g_WeaponSecondaryAttackHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Weapon", "WeaponSecondaryAttack",
+CASHook g_WeaponSecondaryAttackHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Weapon", "WeaponSecondaryAttack",
                                            "CBasePlayer@, CBasePlayerWeapon@", scriptHookArguments[25]);
 CASHook g_WeaponTertiaryAttackHook(1 << DllType::SERVER, HOOK_MODULE_TYPES_ALL, "Weapon", "WeaponTertiaryAttack",
                                   "CBasePlayer@, CBasePlayerWeapon@", scriptHookArguments[26]);

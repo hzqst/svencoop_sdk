@@ -19,7 +19,7 @@ CBaseEntity *ChangeValueHandleEntity( EHANDLE &handle )
 
 bool ChangeValueEntityValid( CBaseEntity *entity )
 {
-	return entity && entity->pev && entity->pev->pContainingEntity && !entity->pev->pContainingEntity->free && ENTINDEX( entity->pev->pContainingEntity ) != 0;
+	return entity && entity->pev && entity->pev->pContainingEntity && !entity->pev->pContainingEntity->free && !FNullEnt( entity->pev->pContainingEntity );
 }
 
 LINK_ENTITY_TO_CLASS( trigger_changevalue, CTriggerChangeValue );
@@ -204,29 +204,36 @@ void CTriggerChangeValue::SpecialValueByteArray( int *value, const char *source,
 	const char *previous = STRING( *value );
 	int length = strlen( source );
 	int previousLength = strlen( previous );
-	char buffer[VALUE_MAX_STRING + 1];
+	static char buffer[VALUE_MAX_STRING + 1];
 
-	if ( length > VALUE_MAX_STRING || ( m_iszValueType == VALUE_OP_CONCAT && previousLength > VALUE_MAX_STRING - length ) )
+	if ( length > VALUE_MAX_STRING )
 	{
-		int requested = length > VALUE_MAX_STRING ? length : previousLength + length;
-
-		ALERT( at_console, "Trigger_changevalue \"%s\": Too long string (%i > %i) used. Not performing operation.\n", STRING( pev->targetname ), requested, VALUE_MAX_STRING );
+		ALERT( at_console, "Trigger_changevalue \"%s\": Too long string (%i > %i) used. Not performing operation.\n", STRING( pev->targetname ), length, VALUE_MAX_STRING );
 		return;
 	}
 
+	buffer[0] = 0;
 	int position = 0;
 
 	if ( m_iszValueType == VALUE_OP_CONCAT )
 	{
+		if ( previousLength > VALUE_MAX_STRING - length )
+		{
+			ALERT( at_console, "Trigger_changevalue \"%s\": Too long string (%i > %i) used. Not performing operation.\n", STRING( pev->targetname ), previousLength + length, VALUE_MAX_STRING );
+			return;
+		}
+
 		memcpy( buffer, previous, previousLength );
 		position = previousLength;
 	}
-	else if ( m_iszValueType != VALUE_OP_REPLACE )
-		ALERT( at_console, "Trigger_changevalue \"%s\": Tried using unknown or impossible operation %s on STRING keyvalue \"%s\".\n",
-		       STRING( pev->targetname ), ChangeValueTypeStr( m_iszValueType ), STRING( m_iszValueName ) );
 
 	memcpy( buffer + position, source, length );
 	buffer[position + length] = 0;
+
+	if ( m_iszValueType != VALUE_OP_CONCAT && m_iszValueType != VALUE_OP_REPLACE )
+		ALERT( at_console, "Trigger_changevalue \"%s\": Tried using unknown or impossible operation %s on STRING keyvalue \"%s\".\n",
+		       STRING( pev->targetname ), ChangeValueTypeStr( m_iszValueType ), STRING( m_iszValueName ) );
+
 	*value = AllocStringLocal( buffer );
 }
 
@@ -319,7 +326,7 @@ bool CTriggerChangeValue::SpecialValue( CBaseEntity *entity, const char *name, c
 			{
 				CBaseEntity *target = FStrEq( source, "!activator" ) ? ChangeValueHandleEntity( m_hActivator ) : UTIL_FindEntityByTargetname( NULL, source );
 
-				*(edict_t **) value = target && target->pev ? target->edict() : NULL;
+				*(edict_t **) value = target ? target->edict() : NULL;
 			}
 			else if ( FClassnameIs( pev, "trigger_changevalue" ) )
 				ALERT( at_console, "Trigger_changevalue \"%s\": Keyvalue \"%s\" of type EDICT cannot be altered with edit type %s. Only REPLACE works.\n",
@@ -464,7 +471,7 @@ void CTriggerChangeValue::SpecialValueFloat( float *value, float source )
 					m_iVectorContext = 2;
 				else
 					ALERT( at_console, "Trigger_changevalue \"%s\": Tried using unknown or impossible operation %s on FLOAT keyvalue \"%s\".\n",
-					       STRING( pev->targetname ), ChangeValueTypeStr( m_iszValueType ), STRING( m_iszValueName ) );
+					       STRING( pev->targetname ), ChangeValueTypeStr( m_iszValueType ), m_iszValueName );
 			}
 			break;
 	}
@@ -508,10 +515,6 @@ void CTriggerChangeValue::SpecialValueInt( int *value, int source )
 		case VALUE_OP_DIVIDE:
 			if ( !source )
 				*value = *value < 0 ? INT_MIN : INT_MAX;
-			else if ( *value == INT_MIN && source == -1 )
-				// IDIV traps on this pair
-				// Keep the wrapped integer
-				*value = INT_MIN;
 			else
 				*value /= source;
 			break;
@@ -530,9 +533,12 @@ void CTriggerChangeValue::SpecialValueInt( int *value, int source )
 		case VALUE_OP_MODULO:
 			if ( source )
 			{
-				long long divisor = source < 0 ? -(long long) source : source;
+				source = abs( source );
 
-				*value = (int) ( (long long) *value % divisor );
+				if ( *value < 0 )
+					*value = -( -*value % source );
+				else
+					*value %= source;
 			}
 			break;
 		case VALUE_OP_XOR:

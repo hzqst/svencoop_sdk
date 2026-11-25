@@ -24,7 +24,7 @@ bool CASWaypointManager::IsValidName( const char *name )
 
 PathConditionPair_t *CASWaypointManager::Find( const char *name, PathConditionPair_t **found ) const
 {
-	PathConditionPair_t *result = NULL;
+	PathConditionPair_t *previous = NULL;
 
 	if ( IsValidName( name ) && m_pFirst )
 	{
@@ -32,16 +32,16 @@ PathConditionPair_t *CASWaypointManager::Find( const char *name, PathConditionPa
 		{
 			if ( strcmp( pair->m_szName, name ) == 0 )
 			{
-				result = pair;
 				break;
 			}
+			previous = pair;
 		}
 	}
 
 	if ( found )
-		*found = result;
+		*found = previous;
 
-	return result;
+	return NULL;
 }
 
 PathConditionPair_t *CASWaypointManager::GetConditions( const char *name ) const
@@ -67,45 +67,42 @@ bool CASWaypointManager::RegisterConditions( const CString &name, asIScriptFunct
 	{
 		CASLog::GetInstance()->Error( AS_LOG_DEFAULT,
 			"CWaypointManager::RegisterConditions: pair name is invalid!\n" );
-
-		return false;
 	}
-
-	if ( !startFunction || !stopFunction )
+	else if ( !startFunction || !stopFunction )
 	{
 		CASLog::GetInstance()->Error( AS_LOG_DEFAULT,
 			"CWaypointManager::RegisterConditions: both functions must be valid!\n" );
-
-		return false;
 	}
-
-	if ( Find( nameData, NULL ) )
+	else if ( Find( nameData, NULL ) )
 	{
 		CASLog::GetInstance()->Error( AS_LOG_DEFAULT,
 			"CWaypointManager::RegisterConditions: pair name \"%s\" is already in use!\n", nameData );
-
-		return false;
 	}
-
-	if ( nameLength > 0x80 )
+	else if ( nameLength > 0x80 )
 	{
 		CASLog::GetInstance()->Error( AS_LOG_DEFAULT,
 			"CWaypointManager::RegisterConditions: pair name \"%s\" length is too long! (max length: %u)\n",
 			nameData, nameLength );
+	}
+	else
+	{
+		PathConditionPair_t *pair = new PathConditionPair_t;
 
-		return false;
+		pair->m_pNext = NULL;
+		UTIL_CopyString( pair->m_szName, nameData, 0x81 );
+		pair->m_pStartFunction = new CASFunction( startFunction, CASServerManager::GetInstance()->m_pActiveModule );
+		pair->m_pStopFunction = new CASFunction( stopFunction, CASServerManager::GetInstance()->m_pActiveModule );
+
+		InsertPair( pair );
 	}
 
-	PathConditionPair_t *pair = new PathConditionPair_t;
+	if ( startFunction )
+		startFunction->Release();
 
-	pair->m_pNext = NULL;
-	UTIL_CopyString( pair->m_szName, nameData, 0x81 );
-	pair->m_pStartFunction = new CASFunction( startFunction, CASServerManager::GetInstance()->m_pActiveModule );
-	pair->m_pStopFunction = new CASFunction( stopFunction, CASServerManager::GetInstance()->m_pActiveModule );
+	if ( stopFunction )
+		stopFunction->Release();
 
-	InsertPair( pair );
-
-	return true;
+	return false;
 }
 
 void CASWaypointManager::FreePair( PathConditionPair_t *pair )

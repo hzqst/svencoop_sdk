@@ -43,7 +43,7 @@ void CTriggerLookat::Spawn( void )
 
 	if ( m_bActive )
 	{
-		SetThink( NULL );
+		SetThink( &CTriggerLookat::Think );
 		pev->nextthink = gpGlobals->time + 0.1;
 	}
 }
@@ -121,7 +121,7 @@ void CTriggerLookat::Think( void )
 
 	if ( m_bActive && !( pev->spawnflags & SF_LOOKAT_ONCE ) )
 	{
-		SetThink( NULL );
+		SetThink( &CTriggerLookat::Think );
 		pev->nextthink = gpGlobals->time;
 	}
 	else

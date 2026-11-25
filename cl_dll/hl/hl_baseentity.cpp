@@ -299,6 +299,7 @@ bool CBaseMonster :: TakeArmor( float flArmor, int bitsDamageType, int armor_cap
 void CBaseMonster :: SetGaitActivity( Activity NewActivity ) { }
 void CBaseAnimating :: ResetGaitSequenceInfo( void ) { }
 int CBaseAnimating :: GetSequenceActivityName( int iSequence ) { return 0; }
+bool CBaseMonster :: NoFriendlyFire( Vector vecPos ) { return true; }
 bool CBaseMonster :: NoFriendlyFire( Vector vecPos, CBaseEntity *pTarget ) { return true; }
 bool CBaseMonster :: NoFriendlyFireToPos( Vector vecPos ) { return true; }
 bool CBaseMonster :: FVisibleGunPos( CBaseEntity *pEntity, const Vector &vecSrc ) { return false; }

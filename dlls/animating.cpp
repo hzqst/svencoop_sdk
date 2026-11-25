@@ -200,7 +200,7 @@ void CBaseAnimating :: DispatchAnimEvents ( float flInterval )
 	flInterval = 0.1;
 
 	// FIX: this still sometimes hits events twice
-	float flStart = pev->frame + (m_flLastEventCheck - pev->animtime) * m_flFrameRate * pev->framerate;
+	float flStart = pev->frame;
 	float flEnd = pev->frame + flInterval * m_flFrameRate * pev->framerate;
 	m_flLastEventCheck = pev->animtime + flInterval;
 
@@ -263,7 +263,7 @@ void CBaseAnimating :: GetAttachment ( int iAttachment, Vector &origin, Vector &
 
 int CBaseAnimating::GetAttachmentCount( void )
 {
-	void *pmodel = GET_MODEL_PTR( pev ? ENT( pev ) : NULL );
+	void *pmodel = GET_MODEL_PTR( ENT(pev) );
 
 	return ( (studiohdr_t *) pmodel )->numattachments;
 }
@@ -276,7 +276,7 @@ int CBaseAnimating :: FindTransition( int iEndingSequence, int iGoalSequence, in
 	
 	if (piDir == NULL)
 	{
-		int iDir;
+		int iDir = 0;
 		int sequence = ::FindTransition( pmodel, iEndingSequence, iGoalSequence, &iDir );
 		if (iDir != 1)
 			return -1;
@@ -296,17 +296,21 @@ void CBaseAnimating :: GetAutomovement( Vector &origin, Vector &angles, float fl
 
 void CBaseAnimating :: SetBodygroup( int iGroup, int iValue )
 {
-	::SetBodygroup( GET_MODEL_PTR( ENT(pev) ), pev, iGroup, iValue );
+	void *pmodel = GET_MODEL_PTR( ENT(pev) );
+
+	pev->body = SetBodygroupInt( pmodel, pev->body, iGroup, iValue );
 }
 
 int CBaseAnimating::GetBodygroupSubmodelCount( int iGroup )
 {
-	return GetBodygroupSubmodelCountInt( GET_MODEL_PTR( edict() ), iGroup );
+	return GetBodygroupSubmodelCountInt( GET_MODEL_PTR( ENT( pev ) ), iGroup );
 }
 
 int CBaseAnimating :: GetBodygroup( int iGroup )
 {
-	return ::GetBodygroup( GET_MODEL_PTR( ENT(pev) ), pev, iGroup );
+	void *pmodel = GET_MODEL_PTR( ENT(pev) );
+
+	return GetBodygroupInt( pmodel, pev->body, iGroup );
 }
 
 

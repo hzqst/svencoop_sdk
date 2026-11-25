@@ -599,6 +599,10 @@ void CBigMomma :: SetYawSpeed ( void )
 	pev->yaw_speed = ys;
 }
 
+extern cvar_t sk_bigmomma_dmg_blast;
+extern cvar_t sk_bigmomma_dmg_slash;
+extern cvar_t sk_bigmomma_radius_blast;
+
 //=========================================================
 // HandleAnimEvent - catches the monster-specific messages
 // that occur when tagged animation frames are played.
@@ -636,7 +640,7 @@ void CBigMomma :: HandleAnimEvent( MonsterEvent_t *pEvent )
 					
 			if ( pHurt )
 			{
-				pHurt->TakeDamage( pev, pev, gSkillData.bigmommaDmgSlash, DMG_CRUSH | DMG_SLASH );
+				pHurt->TakeDamage( pev, pev, sk_bigmomma_dmg_slash.value, DMG_CRUSH | DMG_SLASH );
 
 				if ( ( pHurt->pev->flags & FL_CLIENT ) || ( ( pHurt->pev->flags & FL_MONSTER ) && pHurt->pev->movetype != MOVETYPE_FLY ) )
 				{
@@ -971,7 +975,7 @@ void CBigMomma::NodeReach( void )
 		return;
 
 	if ( pTarget->pev->health )
-		pev->max_health = pev->health = pTarget->pev->health * gSkillData.bigmommaHealthFactor;
+		pev->max_health = pev->health = pTarget->pev->health * sk_bigmomma_health_factor.value;
 
 	if ( !HasMemory( bits_MEMORY_FIRED_NODE ) )
 	{
@@ -1544,7 +1548,7 @@ void CBMortar::Touch( CBaseEntity *pOther )
 	if ( pev->owner )
 		pevOwner = VARS(pev->owner);
 
-	RadiusDamage( pev->origin, pev, pevOwner, gSkillData.bigmommaDmgBlast, gSkillData.bigmommaRadiusBlast, CLASS_NONE, DMG_ACID );
+	RadiusDamage( pev->origin, pev, pevOwner, sk_bigmomma_dmg_blast.value, sk_bigmomma_radius_blast.value, CLASS_NONE, DMG_ACID );
 	UTIL_Remove( this );
 }
 

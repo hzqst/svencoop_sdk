@@ -71,7 +71,7 @@ bool CASCVar::SetStringInternal(const CString &value, bool notify)
 	float oldFloat = GetFloat();
 
 	m_Value = value;
-	m_flValue = (float)strtod(value.Data(), NULL);
+	m_flValue = (float)atof(value.Data());
 
 	if (notify)
 	{

@@ -41,7 +41,7 @@ struct PlayerSlot;
 #define DAMAGE_FOR_FALL_SPEED		(float) 100 / ( PLAYER_FATAL_FALL_SPEED - PLAYER_MAX_SAFE_FALL_SPEED )// damage per unit per second.
 #define PLAYER_MIN_BOUNCE_SPEED		200
 #define PLAYER_FALL_PUNCH_THRESHHOLD (float)350 // won't punch player's screen/make scrape noise unless player falling at least this fast.
-#define PLAYER_BODYTARGET_NEAR_DIST	128 // closer shooters aim at a random height between eyes and center
+#define PLAYER_BODYTARGET_NEAR_DIST	128
 
 //
 // Player PHYSICS FLAGS bits
@@ -382,6 +382,9 @@ public:
 	int					m_idrowndmg;			// track drowning damage taken
 	int					m_idrownrestored;		// track drowning damage restored
 
+#ifndef CLIENT_DLL
+	int					m_bitsLastDamageType = 0;
+#endif
 	int					m_bitsHUDDamage;		// Damage bits for the current fame. These get sent to 
 												// the hude via the DAMAGE message
 	bool				m_fInitHUD;				// True when deferred HUD restart msg needs to be sent
@@ -470,10 +473,14 @@ public:
 	virtual void	Killed( entvars_t *pevAttacker, int iGib );
 	virtual Vector BodyTarget( const Vector &posSrc )		// position to shoot at
 	{
-		if ( ( Center() - posSrc ).Length2D() <= PLAYER_BODYTARGET_NEAR_DIST )
-			return Center() + pev->view_ofs * RANDOM_FLOAT( 0.5, 1.1 );
+		Vector vecCenter = Center();
+		float flHeight;
+		if ( ( vecCenter - posSrc ).Length2D() < PLAYER_BODYTARGET_NEAR_DIST )
+			flHeight = 0.5f;
+		else
+			flHeight = RANDOM_FLOAT( 0.5f, 1.1f );
 
-		return Center() * 0.75 + EyePosition() * 0.25;
+		return vecCenter + pev->view_ofs * flHeight;
 	}
 	virtual void StartSneaking( void ) { m_tSneaking = gpGlobals->time - 1; }
 	virtual void StopSneaking( void ) { m_tSneaking = gpGlobals->time + 30; }

@@ -43,7 +43,7 @@ class CWriteFileSystemToFile
 public:
 	CWriteFileSystemToFile(CKeyvaluesWriter &writer, bool writeDetails = true);
 
-	bool Write(const CASVirtualFileSystem &fileSystem);
+	bool Write(void);
 	void operator()( unsigned int level, const CASDirectory *directory, const char *path );
 
 private:

@@ -43,17 +43,6 @@ void SetOriginStoreHandle( EHANDLE &handle, CBaseEntity *entity )
 	}
 }
 
-CBaseEntity *SetOriginFindNext( CBaseEntity *start, const char *name )
-{
-	edict_t *first = start && start->pev ? start->edict() : NULL;
-	edict_t *found = FIND_ENTITY_BY_STRING( first, "targetname", name );
-
-	if ( !found || found->free )
-		return NULL;
-
-	return CBaseEntity::Instance( found );
-}
-
 bool SetOriginValidEntity( CBaseEntity *entity )
 {
 	if ( !entity || !entity->pev )
@@ -105,7 +94,7 @@ void CTriggerSetOrigin::KeyValue( KeyValueData *pkvd )
 		                                                   : USE_ON;
 	}
 	else if ( FStrEq( pkvd->szKeyName, "copypointer" ) )
-		m_iszCopyPointer = ALLOC_STRING( pkvd->szValue );
+		m_iszCopyPointer = AllocStringLocal( pkvd->szValue );
 	else if ( FStrEq( pkvd->szKeyName, "offset" ) )
 		UTIL_StringToVector( (float *) &m_vecOffset, pkvd->szValue );
 	else if ( FStrEq( pkvd->szKeyName, "angleoffset" ) )
@@ -196,7 +185,7 @@ void CTriggerSetOrigin::SetupEntities( void )
 
 	if ( !specialSource )
 	{
-		CBaseEntity *source = SetOriginFindNext( SetOriginHandleEntity( m_hSource ), copyPointer );
+		CBaseEntity *source = UTIL_FindEntityByTargetname( SetOriginHandleEntity( m_hSource ), copyPointer );
 
 		SetOriginStoreHandle( m_hSource, source );
 	}
@@ -206,7 +195,7 @@ void CTriggerSetOrigin::SetupEntities( void )
 
 	CBaseEntity *target = NULL;
 
-	while ( ( target = SetOriginFindNext( target, STRING( pev->target ) ) ) != NULL )
+	while ( ( target = UTIL_FindEntityByTargetname( target, STRING( pev->target ) ) ) != NULL )
 	{
 		if ( m_iKnownCount >= MAX_ENTITIES )
 			break;

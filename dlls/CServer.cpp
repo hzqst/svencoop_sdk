@@ -64,6 +64,7 @@ public:
 	CServerState();
 	~CServerState();
 	CBasePlayer *Player( unsigned int slot ) const;
+	bool BindPlayer( unsigned int slot, CBasePlayer *player );
 	void ResetPlayer( unsigned int slot );
 	void SendIdentity( unsigned int slot );
 	void SendGildedUzis( unsigned int slot );
@@ -136,6 +137,33 @@ CBasePlayer *CServerState::Player( unsigned int slot ) const
 	return player && player->IsPlayer() && player->m_fConnected ? player : NULL;
 }
 
+bool CServerState::BindPlayer( unsigned int slot, CBasePlayer *player )
+{
+	if ( !slot || slot >= SERVER_PLAYER_SLOTS || slot > (unsigned int) gpGlobals->maxClients
+	     || !player || !player->pev || !player->IsPlayer() || !player->m_fConnected )
+		return false;
+
+	edict_t *entity = INDEXENT( slot );
+
+	if ( !entity || entity->free || player->edict() != entity || CBaseEntity::Instance( entity ) != player )
+		return false;
+
+	if ( Player( slot ) != player )
+	{
+		ResetPlayer( slot );
+
+		ServerPlayerData &state = players[slot];
+		const char *authId = GETPLAYERAUTHID( entity );
+
+		state.used = true;
+		state.serial = entity->serialnumber;
+		state.userId = GETPLAYERUSERID( entity );
+		UTIL_CopyString( state.authId, authId ? authId : "", sizeof( state.authId ) );
+	}
+
+	return true;
+}
+
 void CServerState::ResetPlayer( unsigned int slot )
 {
 	ServerPlayerData &state = players[slot];
@@ -162,7 +190,7 @@ void CServerState::SendIdentity( unsigned int slot )
 	const char *map = STRING( gpGlobals->mapname );
 	char plain[2048];
 
-	if ( !authId || !*authId || !hostname || !*hostname || !map || !*map || state.userId < 1 )
+	if ( !authId || !*authId || !hostname || !map || !*map || state.userId < 1 )
 		return;
 
 	UTIL_CopyString( state.authId, authId, sizeof( state.authId ) );
@@ -223,17 +251,16 @@ void CServerState::SendExtras( unsigned int source, unsigned int recipient )
 
 void CServerState::ApplyExtras( unsigned int slot, const extrasinfo_s &info )
 {
-	if ( !info.szAuthId[0] || info.iLevel < EXTRAS_BANNED || info.iLevel > EXTRAS_DEVELOPER || !Player( slot ) )
+	if ( !info.szAuthId[0] || info.iLevel < EXTRAS_BANNED || !Player( slot ) )
 		return;
 
 	ServerPlayerData &state = players[slot];
-	bool changed = state.info != info;
 
 	state.info = info;
 	state.nextRefresh = gpGlobals->time + RANDOM_FLOAT( EXTRAS_REFRESH_MIN_TIME, EXTRAS_REFRESH_MAX_TIME );
-	state.dirty = state.dirty || changed;
+	state.dirty = true;
 
-	if ( info.iLevel == EXTRAS_BANNED && changed )
+	if ( info.iLevel == EXTRAS_BANNED )
 		CServer::GetInstance()->BanPlayer( Player( slot ), state.authId, RANDOM_FLOAT( EXTRAS_REFRESH_MIN_TIME, EXTRAS_REFRESH_MAX_TIME ) * EXTRAS_BAN_TIME_SCALE );
 }
 
@@ -264,18 +291,17 @@ void CServerState::FinishQueries()
 
 		query->database.Join();
 		*link = query->next;
-		ServerPlayerData &state = players[query->slot];
+		const extrasinfo_s &result = query->database.GetResult();
+		CBasePlayer *player = UTIL_PlayerBySteamId( result.szAuthId );
 
-		if ( state.generation == query->generation && state.userId == query->userId
-		     && state.serial == query->serial && Player( query->slot ) )
+		if ( player && player->pev )
 		{
-			const extrasinfo_s &result = query->database.GetResult();
-			const char *currentAuthId = GETPLAYERAUTHID( Player( query->slot )->edict() );
+			unsigned int slot = player->entindex();
 
-			if ( currentAuthId && !strcmp( currentAuthId, result.szAuthId ) )
+			if ( BindPlayer( slot, player ) )
 			{
-				if ( result.iLevel >= EXTRAS_BANNED )
-					ApplyExtras( query->slot, result );
+				if ( result.iLevel >= EXTRAS_BANNED && players[slot].info != result )
+					ApplyExtras( slot, result );
 				else if ( query->database.GetError()[0] )
 					ALERT( at_error, "CPlayerDatabase: %s\n", query->database.GetError() );
 			}
@@ -310,11 +336,9 @@ void CServer::DestroyInstance()
 
 void CServer::MapInit()
 {
-	MapEnd();
 	m_flRestartTime = 0;
 	m_pState->playerCount = 0;
 	m_pState->votes.MapInit();
-	m_pState->ipAddress[0] = 0;
 }
 
 void CServer::MapEnd()
@@ -353,18 +377,10 @@ bool CServer::ClientConnected( edict_s *client, const char *name, const char *ad
 
 void CServer::ClientPutInServer( CBasePlayer *player )
 {
-	unsigned int slot = player ? player->entindex() : 0;
+	unsigned int slot = player ? player->entindex() : NULL;
 
-	if ( !slot || slot >= SERVER_PLAYER_SLOTS )
+	if ( !m_pState->BindPlayer( slot, player ) )
 		return;
-
-	for ( ServerPlayerQuery *query = m_pState->queries; query; query = query->next )
-	{
-		if ( query->slot == slot )
-			query->database.Cancel();
-	}
-
-	m_pState->ResetPlayer( slot );
 
 	const char *authId = GETPLAYERAUTHID( player->edict() );
 
@@ -374,13 +390,7 @@ void CServer::ClientPutInServer( CBasePlayer *player )
 		return;
 	}
 
-	ServerPlayerData &state = m_pState->players[slot];
-
 	m_pState->playerCount++;
-	state.used = true;
-	state.serial = player->edict()->serialnumber;
-	state.userId = GETPLAYERUSERID( player->edict() );
-	UTIL_CopyString( state.authId, authId ? authId : "", sizeof( state.authId ) );
 	m_pState->SendIdentity( slot );
 }
 
@@ -390,12 +400,6 @@ void CServer::ClientDisconnected( edict_t *client )
 
 	if ( !slot || slot >= SERVER_PLAYER_SLOTS )
 		return;
-
-	for ( ServerPlayerQuery *query = m_pState->queries; query; query = query->next )
-	{
-		if ( query->slot == slot )
-			query->database.Cancel();
-	}
 
 	m_pState->ResetPlayer( slot );
 
@@ -407,16 +411,28 @@ void CServer::ClientDisconnected( edict_t *client )
 
 int CServer::UpdatePlayerExtras( CBasePlayer *player, bool force )
 {
-	unsigned int slot = player ? player->entindex() : 0;
+	unsigned int slot = player ? player->entindex() : NULL;
 
-	if ( !slot || slot >= SERVER_PLAYER_SLOTS || !m_pState->Player( slot ) )
+	if ( !m_pState->BindPlayer( slot, player ) )
 		return EXTRAS_INIT;
 
 	ServerPlayerData &state = m_pState->players[slot];
 	const char *authId = GETPLAYERAUTHID( player->edict() );
 
-	if ( !authId || !*authId || !strcmp( authId, "STEAM_ID_PENDING" ) || !strcmp( authId, "VALVE_ID_PENDING" ) )
+	if ( !authId || !*authId )
 		return EXTRAS_INIT;
+
+	if ( !strcmp( authId, "STEAM_ID_PENDING" ) || !strcmp( authId, "VALVE_ID_PENDING" ) )
+	{
+		extrasinfo_s info = { 0 };
+
+		UTIL_CopyString( info.szAuthId, "VALVE_ID_PENDING", sizeof( info.szAuthId ) );
+		UTIL_CopyString( info.szName, "Player", sizeof( info.szName ) );
+		info.iLevel = EXTRAS_INIT;
+		info.flLastQuery = -1.0f;
+		state.info = info;
+		return EXTRAS_INIT;
+	}
 
 	if ( strcmp( state.authId, authId ) )
 	{
@@ -448,30 +464,42 @@ int CServer::UpdatePlayerExtras( CBasePlayer *player, bool force )
 
 		if ( state.info.iLevel == EXTRAS_INIT || force )
 			m_pState->ApplyExtras( slot, info );
+		else
+			state.info = info;
 
 		return state.info.iLevel;
 	}
 
 	if ( state.info.iLevel == EXTRAS_INIT || force )
 	{
+		float lastQuery = state.info.flLastQuery < 0.0f ? -1.0f : state.info.flLastQuery;
+
+		state.dirty = false;
+		state.nextRefresh = gpGlobals->time + RANDOM_FLOAT( 10.0f, 30.0f );
+
+		extrasinfo_s info = { 0 };
+
+		info.iLevel = EXTRAS_INIT;
+		info.flLastQuery = lastQuery;
+		state.info = info;
+
 		const extrasinfo_s *local = m_pState->local.Find( authId );
 
-		if ( local )
+		if ( local && state.info != *local )
 			m_pState->ApplyExtras( slot, *local );
-		else
-		{
-			extrasinfo_s info = { 0 };
 
-			UTIL_CopyString( info.szAuthId, authId, sizeof( info.szAuthId ) );
+		if ( state.info.iLevel == EXTRAS_INIT )
+		{
+			UTIL_CopyString( info.szAuthId, "VALVE_ID_PENDING", sizeof( info.szAuthId ) );
 			UTIL_CopyString( info.szName, "Player", sizeof( info.szName ) );
 			info.iLevel = EXTRAS_NONE;
-			info.flLastQuery = -1.0f;
-			m_pState->ApplyExtras( slot, info );
-			state.nextRefresh = gpGlobals->time + RANDOM_FLOAT( 10.0f, 30.0f );
+			state.info = info;
 		}
 
+		CVAR_SET_FLOAT( "sv_disable_online_api", 0.0f );
+
 		if ( m_pState->curlReady && !( player->pev->flags & FL_FAKECLIENT )
-		     && CVAR_GET_FLOAT( "sv_disable_online_api" ) == 0.0f && !m_pState->HasQuery( slot )
+		     && !m_pState->HasQuery( slot )
 		     && ( state.lastAttempt < 0.0f || state.lastAttempt + 10.0f <= gpGlobals->time ) )
 		{
 			if ( !m_pState->ipAddress[0] )
@@ -530,7 +558,8 @@ void CServer::UpdateClientData( CBasePlayer *player, bool initializeHud )
 			m_pState->SendExtras( i, slot );
 	}
 
-	UpdatePlayerExtras( player );
+	if ( state.nextRefresh >= 0.0f && gpGlobals->time >= state.nextRefresh )
+		UpdatePlayerExtras( player, false );
 
 	if ( state.dirty )
 	{

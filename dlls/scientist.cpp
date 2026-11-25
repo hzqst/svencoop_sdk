@@ -32,6 +32,7 @@
 
 extern cvar_t sk_scientist_health;
 extern cvar_t sk_scientist_heal;
+extern CBaseEntity *DamagePointsEntity( entvars_t *variables );
 
 
 #define		NUM_SCIENTIST_HEADS		4 // four heads available for scientist model
@@ -629,6 +630,7 @@ void CScientist :: StartTask( Task_t *pTask )
 				break;
 			}
 
+			target = m_hHealTarget;
 			target->m_hHealer = this;
 			target->pev->renderamt = 1500;
 
@@ -641,10 +643,8 @@ void CScientist :: StartTask( Task_t *pTask )
 
 	case TASK_REVIVE:
 		{
-			CBaseEntity *target = m_hHealTarget;
-
-			if ( !target || target->IsAlive() || IRelationship( target, true ) > R_NO
-			     || ( target->IsMonster() && ( target->pev->effects & EF_NODRAW ) ) || !target->IsRevivable() )
+			if ( m_hHealTarget == NULL || m_hHealTarget->IsAlive() || IRelationship( m_hHealTarget, true ) > R_NO
+			     || ( m_hHealTarget->IsMonster() && ( m_hHealTarget->pev->effects & EF_NODRAW ) ) || !m_hHealTarget->IsRevivable() )
 			{
 				StopPlayerFollowing( false, true );
 				TaskFail();
@@ -734,9 +734,8 @@ void CScientist :: RunTask( Task_t *pTask )
 	case TASK_MOVE_TO_TARGET_RANGE:
 		if ( m_pSchedule == slScientistRevive )
 		{
-			CBaseEntity *target = m_hHealTarget;
-
-			if ( target && ( target->IsAlive() || ( target->m_hHealer != NULL && target->m_hHealer != this ) ) )
+			if ( m_hHealTarget != NULL && ( m_hHealTarget->IsAlive()
+			     || ( m_hHealTarget->m_hHealer != NULL && m_hHealTarget->m_hHealer != this ) ) )
 			{
 				StopPlayerFollowing( false, true );
 				TaskFail();
@@ -806,16 +805,25 @@ void CScientist :: RunTask( Task_t *pTask )
 			if ( !m_fSequenceFinished )
 				break;
 
-			if ( !target->IsAlive() && target->m_hHealer == this
-			     && ( !monster || ( IRelationship( monster, true ) <= R_NO && !( monster->pev->effects & EF_NODRAW ) ) )
-			     && target->IsRevivable() )
+			if ( !target->IsAlive() && target->m_hHealer == this )
 			{
-				if ( monster )
-					monster->m_flReviveTime = gpGlobals->time;
+				bool canRevive = true;
 
-				target->pev->flags |= FL_FROZEN;
-				target->pev->nextthink = gpGlobals->time + 0.5f;
-				target->SetThink( &CBaseMonster::ReviveThink );
+				if ( monster )
+				{
+					bool hidden = ( monster->pev->effects & EF_NODRAW ) != 0;
+					canRevive = IRelationship( monster, true ) <= R_NO && !hidden;
+				}
+
+				if ( canRevive && target->IsRevivable() )
+				{
+					if ( monster )
+						monster->m_flReviveTime = gpGlobals->time;
+
+					target->pev->flags |= FL_FROZEN;
+					target->pev->nextthink = gpGlobals->time + 0.5f;
+					target->SetThink( &CBaseMonster::ReviveThink );
+				}
 			}
 
 			target->m_hHealer = NULL;
@@ -1029,7 +1037,7 @@ int CScientist :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 		return 0;
 
 	// mp_npckill protection: no damage and no provocation
-	if ( CheckAttacker( CBaseEntity::Instance( pevAttacker ) ) )
+	if ( CheckAttacker( DamagePointsEntity( pevAttacker ) ) )
 		return 0;
 
 	if ( pevInflictor && pevInflictor->flags & FL_CLIENT )
@@ -1403,7 +1411,7 @@ class CDeadScientist : public CBaseMonster
 {
 public:
 	void Spawn( void );
-	int	Classify ( void ) { return	CLASS_HUMAN_PASSIVE; }
+	int	Classify ( void ) { return GetClassification( CLASS_HUMAN_PASSIVE ); }
 
 	void KeyValue( KeyValueData *pkvd );
 	int	m_iPose;// which sequence to display
@@ -1415,7 +1423,8 @@ void CDeadScientist::KeyValue( KeyValueData *pkvd )
 {
 	if (FStrEq(pkvd->szKeyName, "pose"))
 	{
-		m_iPose = atoi(pkvd->szValue);
+		int pose = atoi(pkvd->szValue);
+		m_iPose = V_max( 0, V_min( pose, (int) ARRAYSIZE( m_szPoses ) - 1 ) );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -1431,14 +1440,21 @@ void CDeadScientist :: Spawn( )
 	const char *model;
 
 	if ( pev->model )
+	{
+		UTIL_PrecacheModel( this, STRING( pev->model ) );
 		model = STRING( pev->model );
-	else if ( CClassicMode::GetInstance()->IsEnabled() )
-		model = "models/hlclassic/scientist.mdl";
+	}
 	else
-		model = "models/scientist.mdl";
+	{
+		if ( CClassicMode::GetInstance()->IsEnabled() )
+			model = "models/hlclassic/scientist.mdl";
+		else
+			model = "models/scientist.mdl";
 
-	UTIL_PrecacheModel( this, model );
-	UTIL_SetModel( this, model );
+		UTIL_PrecacheModel( this, model );
+	}
+
+	SET_MODEL( ENT(pev), model );
 
 	m_bloodColor = DONT_BLEED;
 	// Corpses have less health
@@ -1465,7 +1481,7 @@ void CDeadScientist :: Spawn( )
 	}
 
 	// Luther is black, make his hands black
-	if ( pev->body == HEAD_LUTHER )
+	if ( pev->body == HEAD_LUTHER && !pev->skin )
 		pev->skin = 1;
 
 	//	pev->skin += 2; // use bloody skin -- UNDONE: Turn this back on when we have a bloody skin again!
@@ -1703,7 +1719,9 @@ void CSittingScientist :: SittingThink( void )
 void CSittingScientist :: SetAnswerQuestion( CBaseMonster *pSpeaker )
 {
 	m_flResponseDelay = gpGlobals->time + RANDOM_FLOAT(3, 4);
-	m_hTalkTarget = pSpeaker;
+	CEntityHandle<CBaseMonster> speaker;
+	speaker = pSpeaker;
+	m_hTalkTarget = speaker.m_Handle;
 }
 
 

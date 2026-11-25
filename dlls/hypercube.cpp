@@ -120,8 +120,8 @@ void CHyperCube::Spawn( void )
 		}
 	}
 
-	SetUse( NULL );
-	SetThink( NULL );
+	SetUse( &CHyperCube::Use );
+	SetThink( &CHyperCube::Think );
 	pev->nextthink = gpGlobals->time + 0.01;
 }
 
@@ -249,7 +249,7 @@ void CHyperCube::Think( void )
 		m_hSprites[i]->pev->origin.z = vertices[i][2] * pev->scale + pev->origin.z;
 	}
 
-	SetThink( NULL );
+	SetThink( &CHyperCube::Think );
 	pev->nextthink = gpGlobals->time + 0.01;
 }
 

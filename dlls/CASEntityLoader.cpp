@@ -26,7 +26,9 @@ void CASEntityLoader::HandleKeyValues( const CString &className, edict_s *entity
 
 	data.szClassName = className.Data();
 
-	for ( CKvBlockNode::Children::const_iterator entry = children.begin(); entry != children.end(); entry++ )
+	CKvBlockNode::Children::const_iterator end = children.end();
+
+	for ( CKvBlockNode::Children::const_iterator entry = children.begin(); entry != end; entry++ )
 	{
 		CKeyvalueNode *child = entry->get();
 
@@ -108,7 +110,7 @@ bool CASEntityLoader::LoadFromFile( const CString &fileName, const Vector &offse
 		return false;
 	}
 
-	char path[MAX_PATH * 2];
+	char path[512 + 4]; // path +ext
 	int result = UTIL_FormatString( path, sizeof( path ), "%s/%s", module->m_pModuleInfo->m_pszDirectory, fileName.Data() );
 
 	if ( result == -1 )

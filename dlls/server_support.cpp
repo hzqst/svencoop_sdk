@@ -108,19 +108,7 @@ char *PlayerLog( edict_t *entity )
 		}
 	}
 
-	g_iEntityLogBuffer++;
-
-	if ( g_iEntityLogBuffer >= ENTITY_LOG_BUFFER_COUNT )
-		g_iEntityLogBuffer = 0;
-
-	char *buffer = g_EntityLogBuffers[g_iEntityLogBuffer];
-
-	if ( *name )
-		UTIL_FormatString( buffer, ENTITY_LOG_BUFFER_SIZE, "%s<%s><%s><%s>", name, userId, authId, className );
-	else
-		UTIL_CopyString( buffer, "invalid_ent", ENTITY_LOG_BUFFER_SIZE );
-
-	return buffer;
+	return EntityLogString( name, userId, authId, className );
 }
 
 bool UTIL_IsPlayerConnected( CBasePlayer *player )

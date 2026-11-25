@@ -153,7 +153,7 @@ void CBasePhysicsObject::DefaultTouch( CBaseEntity *other )
 
 	if ( m_iBounceCount >= MAX_BOUNCE_COUNT )
 	{
-		DROP_TO_FLOOR( edict() );
+		DROP_TO_FLOOR( ENT( pev ) );
 		pev->velocity = g_vecZero;
 		pev->avelocity = g_vecZero;
 		m_iBounceCount = 0;
@@ -177,7 +177,7 @@ void CBasePhysicsObject::DefaultTouch( CBaseEntity *other )
 				float volume = scale * 0.4 + 0.15;
 				int pitch = (int) ( (float) ( RANDOM_LONG( 0, 20 ) + 90 ) + scale * 25.0f );
 
-				EMIT_SOUND_DYN( edict(), CHAN_ITEM, sound, volume, 1.0f, 0, pitch );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, sound, volume, 1.0f, 0, pitch );
 			}
 
 			float scale;

@@ -361,9 +361,9 @@ void CASPlayerFuncs::BotDisconnect( CBasePlayer *bot )
 
 	edict_t *entity = bot->pev->pContainingEntity;
 
-	if ( !entity || entity->free || !ENTINDEX( entity ) || !( bot->pev->flags & FL_FAKECLIENT ) )
+	if ( !entity || entity->free || !OFFSET( entity ) || !( bot->pev->flags & FL_FAKECLIENT ) )
 		return;
 
-	ClientDisconnect( entity );
-	REMOVE_ENTITY( bot->pev ? bot->pev->pContainingEntity : NULL );
+	ClientDisconnect( bot->edict() );
+	REMOVE_ENTITY( bot->edict() );
 }

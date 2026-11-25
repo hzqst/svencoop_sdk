@@ -168,7 +168,7 @@ int CASItemRegistry::RegisterItem( const CString &name, const CString &spriteDir
 	UTIL_CopyString( pItem->szAmmo2Entity, ammo2Entity.Data(), sizeof( pItem->szAmmo2Entity ) );
 	pItem->iId = FIRST_ITEM_ID + m_iItemCount++;
 
-	UTIL_PrecacheOtherWeapon( STRING( ALLOC_STRING( name.Data() ) ) );
+	UTIL_PrecacheOtherWeapon( STRING( AllocStringLocal( name.Data() ) ) );
 
 	return pItem->iId;
 }

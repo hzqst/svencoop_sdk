@@ -327,7 +327,9 @@ int PrecacheModel_Intercept( CBaseEntity *entity, const char *model );
 void SetModel_Intercept( edict_t *entity, const char *model );
 
 #ifndef CLIENT_DLL
+class CWorld;
 extern string_t g_szModelReplacement;
+CWorld *GetModelReplacementWorld( void );
 void SetModelWithBounds( CBaseEntity *entity, const char *model );
 void UTIL_SetModel( CBaseEntity *entity, const char *model );
 #endif
@@ -349,8 +351,6 @@ class CBasePlayer;
 extern CBasePlayer *UTIL_PlayerBySteamId( const char *authId );
 extern CBasePlayer *UTIL_GetActivePlayer( int index );
 extern CBaseEntity *FindEntityForward( CBaseEntity *entity, float distance );
-extern int UTIL_GetPrecachedModelCount( void );
-extern void UTIL_ResetPrecachedModelCount( void );
 extern int UTIL_CountPlayersInBrushVolume( bool ignoreDeadPlayers, CBaseEntity *volume, int &inside,
                                            int &outside, IPlayerInVolumeListener *listener );
 #endif

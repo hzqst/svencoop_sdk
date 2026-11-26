@@ -4,3 +4,6 @@ __pycache__/
 /linux/debug/
 /linux/release/
 /linux/*_map.txt
+/build/
+/external/fmodapi44464win/
+/external/fmodapi44464linux.tar.gz

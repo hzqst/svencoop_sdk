@@ -6,3 +6,5 @@
 *.vcxproj text eol=crlf
 *.vcxproj.filters text eol=crlf
 *.csv text eol=lf
+/linux/build.sh text eol=lf
+/linux/deploy.sh text eol=lf

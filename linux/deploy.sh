@@ -15,12 +15,17 @@ case "$CONFIGURATION" in
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="$SCRIPT_DIR/$CONFIGURATION"
+STAGE_DIR="$SCRIPT_DIR/../build/scout/$CONFIGURATION/stage/svencoop"
 
 SVENCOOP_DIR="$HOME/.local/share/Steam/steamapps/common/Sven Co-op"
 
-echo "Starting Linux deployment script..."
-cp "$BUILD_DIR/client.so" "$SVENCOOP_DIR/svencoop/cl_dlls/"
-cp "$BUILD_DIR/server.so" "$SVENCOOP_DIR/svencoop/dlls/"
+for artifact in cl_dlls/client.so dlls/server.so libfmodex.so; do
+    if [[ ! -f "$STAGE_DIR/$artifact" ]]; then
+        echo "Missing $STAGE_DIR/$artifact. Run ./linux/build.sh $CONFIGURATION first." >&2
+        exit 1
+    fi
+done
 
-echo "DONE"
+cp "$STAGE_DIR/cl_dlls/client.so" "$SVENCOOP_DIR/svencoop/cl_dlls/"
+cp "$STAGE_DIR/dlls/server.so" "$SVENCOOP_DIR/svencoop/dlls/"
+cp "$STAGE_DIR/libfmodex.so" "$SVENCOOP_DIR/svencoop/"
